@@ -7,7 +7,7 @@ import type { StateFeature } from "@/lib/types";
 
 interface SearchBarProps {
   features: StateFeature[];
-  onSelect: (state: string) => void;
+  onSelect: (stateName: string) => void;
 }
 
 export default function SearchBar({ features, onSelect }: SearchBarProps) {
@@ -15,7 +15,11 @@ export default function SearchBar({ features, onSelect }: SearchBarProps) {
   const [focused, setFocused] = useState(false);
 
   const fuse = useMemo(
-    () => new Fuse(features, { keys: ["properties.state"], threshold: 0.35 }),
+    () =>
+      new Fuse(features, {
+        keys: ["properties.state"],
+        threshold: 0.35,
+      }),
     [features]
   );
 
