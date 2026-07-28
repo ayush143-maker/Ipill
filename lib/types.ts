@@ -37,6 +37,12 @@ export interface IndicatorNationalStats {
 
 export type MetaByIndicator = Record<string, IndicatorNationalStats>;
 
+export interface StateLeaderboardEntry {
+  state: string;
+  avg: number;
+  district_count: number;
+}
+
 export interface DotProperties {
   s: string; // state name
   v: number; // indicator value at time of dot generation

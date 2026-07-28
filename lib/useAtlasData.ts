@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import type { IndicatorMeta, MetaByIndicator, StatesCollection } from "./types";
 
 interface AtlasCore {
@@ -53,39 +53,4 @@ export function useAtlasCore(): AtlasCore {
   }, []);
 
   return { states, meta, indicators, loading, error };
-}
-
-// Lazily fetches and caches (in-memory, per session) the dot GeoJSON for a
-// given indicator key. Switching indicators after the first load is instant.
-export function useIndicatorDots(indicatorKey: string) {
-  const cache = useRef<Map<string, GeoJSON.FeatureCollection>>(new Map());
-  const [data, setData] = useState<GeoJSON.FeatureCollection | null>(
-    cache.current.get(indicatorKey) ?? null
-  );
-  const [loading, setLoading] = useState(!cache.current.has(indicatorKey));
-
-  useEffect(() => {
-    let cancelled = false;
-    if (cache.current.has(indicatorKey)) {
-      setData(cache.current.get(indicatorKey)!);
-      setLoading(false);
-      return;
-    }
-    setLoading(true);
-    fetch(`/data/dots/${indicatorKey}.geojson`)
-      .then((r) => r.json())
-      .then((json) => {
-        if (cancelled) return;
-        cache.current.set(indicatorKey, json);
-        setData(json);
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [indicatorKey]);
-
-  return { data, loading };
 }
