@@ -1,0 +1,33 @@
+{
+  "name": "india-ipill-atlas",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Interactive India Family Planning Method-Use Atlas (NFHS-5, state-level)",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "build:data": "node scripts/build-data.mjs"
+  },
+  "dependencies": {
+    "next": "14.2.5",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "maplibre-gl": "^4.5.0",
+    "framer-motion": "^11.3.19",
+    "recharts": "^2.12.7",
+    "fuse.js": "^7.0.0",
+    "lucide-react": "^0.424.0"
+  },
+  "devDependencies": {
+    "@turf/turf": "^7.3.5",
+    "@types/node": "^20.14.11",
+    "@types/react": "^18.3.3",
+    "@types/react-dom": "^18.3.0",
+    "autoprefixer": "^10.4.19",
+    "postcss": "^8.4.40",
+    "tailwindcss": "^3.4.7",
+    "typescript": "^5.5.4"
+  }
+}
