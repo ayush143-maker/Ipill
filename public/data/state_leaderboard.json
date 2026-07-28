@@ -1,0 +1,167 @@
+[
+  {
+    "state": "Tripura",
+    "avg": 33,
+    "district_count": 8
+  },
+  {
+    "state": "Assam",
+    "avg": 27.8,
+    "district_count": 32
+  },
+  {
+    "state": "West Bengal",
+    "avg": 18.9,
+    "district_count": 17
+  },
+  {
+    "state": "Mizoram",
+    "avg": 14.3,
+    "district_count": 8
+  },
+  {
+    "state": "Arunachal Pradesh",
+    "avg": 13.4,
+    "district_count": 17
+  },
+  {
+    "state": "Odisha",
+    "avg": 10.8,
+    "district_count": 27
+  },
+  {
+    "state": "Jammu Kashmir",
+    "avg": 9.3,
+    "district_count": 19
+  },
+  {
+    "state": "Meghalaya",
+    "avg": 9.3,
+    "district_count": 11
+  },
+  {
+    "state": "Ladakh",
+    "avg": 6.6,
+    "district_count": 1
+  },
+  {
+    "state": "Nagaland",
+    "avg": 5.7,
+    "district_count": 11
+  },
+  {
+    "state": "Uttar Pradesh",
+    "avg": 4.5,
+    "district_count": 70
+  },
+  {
+    "state": "Manipur",
+    "avg": 4.2,
+    "district_count": 9
+  },
+  {
+    "state": "Andaman Nicobar Islands",
+    "avg": 3.9,
+    "district_count": 3
+  },
+  {
+    "state": "Jharkhand",
+    "avg": 3.1,
+    "district_count": 23
+  },
+  {
+    "state": "Dadra Nagar Haveli Daman Diu",
+    "avg": 2.9,
+    "district_count": 3
+  },
+  {
+    "state": "Haryana",
+    "avg": 2.9,
+    "district_count": 20
+  },
+  {
+    "state": "Rajasthan",
+    "avg": 2.9,
+    "district_count": 33
+  },
+  {
+    "state": "Chhattisgarh",
+    "avg": 2.6,
+    "district_count": 24
+  },
+  {
+    "state": "NCT Delhi",
+    "avg": 2.6,
+    "district_count": 11
+  },
+  {
+    "state": "Goa",
+    "avg": 2.5,
+    "district_count": 2
+  },
+  {
+    "state": "Gujarat",
+    "avg": 2.4,
+    "district_count": 33
+  },
+  {
+    "state": "Uttarakhand",
+    "avg": 2.2,
+    "district_count": 12
+  },
+  {
+    "state": "Bihar",
+    "avg": 2,
+    "district_count": 36
+  },
+  {
+    "state": "Himachal Pradesh",
+    "avg": 1.8,
+    "district_count": 12
+  },
+  {
+    "state": "Karnataka",
+    "avg": 1.8,
+    "district_count": 16
+  },
+  {
+    "state": "Madhya Pradesh",
+    "avg": 1.8,
+    "district_count": 48
+  },
+  {
+    "state": "Maharashtra",
+    "avg": 1.8,
+    "district_count": 33
+  },
+  {
+    "state": "Punjab",
+    "avg": 1.6,
+    "district_count": 21
+  },
+  {
+    "state": "Telangana",
+    "avg": 0.6,
+    "district_count": 30
+  },
+  {
+    "state": "Kerala",
+    "avg": 0.3,
+    "district_count": 14
+  },
+  {
+    "state": "Puducherry",
+    "avg": 0.3,
+    "district_count": 4
+  },
+  {
+    "state": "Tamil Nadu",
+    "avg": 0.3,
+    "district_count": 32
+  },
+  {
+    "state": "Andhra Pradesh",
+    "avg": 0.1,
+    "district_count": 12
+  }
+]

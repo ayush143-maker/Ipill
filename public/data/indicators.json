@@ -1,30 +1,6 @@
 [
   {
     "key": "pill",
-    "label": "Oral Contraceptive Pill use"
-  },
-  {
-    "key": "modern_method",
-    "label": "Any modern method"
-  },
-  {
-    "key": "any_method",
-    "label": "Any method (modern + traditional)"
-  },
-  {
-    "key": "female_sterilization",
-    "label": "Female sterilization"
-  },
-  {
-    "key": "condom",
-    "label": "Condom"
-  },
-  {
-    "key": "iud",
-    "label": "IUD / PPIUD"
-  },
-  {
-    "key": "injectables",
-    "label": "Injectables"
+    "label": "Oral Contraceptive Pill use (current use, married women 15-49)"
   }
 ]
