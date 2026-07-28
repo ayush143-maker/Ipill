@@ -196,11 +196,11 @@ export default function IndiaMap({
             ["linear"],
             ["zoom"],
             3,
-            ["+", 2.2, ["*", ["get", "size"], 4.5]],
+            ["+", 3.2, ["*", ["get", "size"], 5.5]],
             6,
-            ["+", 4, ["*", ["get", "size"], 8]],
+            ["+", 5.5, ["*", ["get", "size"], 9.5]],
             9,
-            ["+", 7, ["*", ["get", "size"], 14]],
+            ["+", 9, ["*", ["get", "size"], 16]],
           ],
           "circle-color": [
             "interpolate",
@@ -214,7 +214,7 @@ export default function IndiaMap({
             "#FF43D1",
           ],
           "circle-blur": 1.3,
-          "circle-opacity": ["interpolate", ["linear"], ["get", "glow"], 0, 0.08, 1, 0.4],
+          "circle-opacity": ["interpolate", ["linear"], ["get", "glow"], 0, 0.22, 1, 0.55],
         },
       });
 
@@ -233,11 +233,11 @@ export default function IndiaMap({
             ["linear"],
             ["zoom"],
             3,
-            ["+", 0.04, ["*", ["get", "size"], 0.09]],
+            ["+", 0.055, ["*", ["get", "size"], 0.11]],
             6,
-            ["+", 0.07, ["*", ["get", "size"], 0.16]],
+            ["+", 0.09, ["*", ["get", "size"], 0.19]],
             9,
-            ["+", 0.12, ["*", ["get", "size"], 0.28]],
+            ["+", 0.15, ["*", ["get", "size"], 0.32]],
           ],
         },
         paint: {
@@ -360,4 +360,5 @@ function setFeatureStateByName(
 // state name (must match promoteId config below).
 function hashId(name: string): string {
   return name;
-                                                }
+                                           }
+  
