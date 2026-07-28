@@ -1,18 +1,66 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import maplibregl, { Map as MLMap } from "maplibre-gl";
 import type { StatesCollection } from "@/lib/types";
+import { buildClusterDots } from "@/lib/genClusterDots";
 
 interface IndiaMapProps {
   states: StatesCollection;
-  dots: GeoJSON.FeatureCollection | null;
   indicatorKey: string;
   selectedState: string | null;
   visibleStates: Set<string> | null; // null = no filter (show all)
   onSelectState: (stateName: string | null) => void;
   onHoverState: (stateName: string | null, x: number, y: number) => void;
   flyToBbox: [number, number, number, number] | null;
+}
+
+// Builds a single glossy "gel sphere" sprite: saturated hot-pink body,
+// soft lavender bloom fading to transparent at the edge, and a white
+// glossy specular highlight offset toward the upper-left.
+function createGelSprite(size = 128): ImageData {
+  const canvas = document.createElement("canvas");
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext("2d")!;
+  const cx = size / 2;
+  const cy = size / 2;
+  const r = size / 2;
+
+  // 1. Soft outer lavender/pink bloom (large, low opacity, fades to nothing)
+  const bloom = ctx.createRadialGradient(cx, cy, r * 0.15, cx, cy, r);
+  bloom.addColorStop(0, "rgba(255,139,239,0.55)"); // FF8BEF
+  bloom.addColorStop(0.55, "rgba(255,94,219,0.28)"); // FF5EDB
+  bloom.addColorStop(1, "rgba(255,46,190,0)"); // FF2EBE -> transparent
+  ctx.fillStyle = bloom;
+  ctx.fillRect(0, 0, size, size);
+
+  // 2. Saturated gel body
+  const body = ctx.createRadialGradient(cx, cy, 0, cx, cy, r * 0.72);
+  body.addColorStop(0, "rgba(255,247,255,0.95)"); // FFF7FF
+  body.addColorStop(0.28, "rgba(255,208,247,0.95)"); // FFD0F7
+  body.addColorStop(0.5, "rgba(255,139,239,0.92)"); // FF8BEF
+  body.addColorStop(0.72, "rgba(255,94,219,0.9)"); // FF5EDB
+  body.addColorStop(0.88, "rgba(255,67,209,0.88)"); // FF43D1
+  body.addColorStop(1, "rgba(255,46,190,0)"); // FF2EBE -> soft edge
+  ctx.fillStyle = body;
+  ctx.beginPath();
+  ctx.arc(cx, cy, r * 0.72, 0, Math.PI * 2);
+  ctx.fill();
+
+  // 3. Glossy specular highlight, offset upper-left
+  const hx = cx - r * 0.26;
+  const hy = cy - r * 0.28;
+  const highlight = ctx.createRadialGradient(hx, hy, 0, hx, hy, r * 0.32);
+  highlight.addColorStop(0, "rgba(255,255,255,0.95)");
+  highlight.addColorStop(0.5, "rgba(255,247,255,0.55)");
+  highlight.addColorStop(1, "rgba(255,247,255,0)");
+  ctx.fillStyle = highlight;
+  ctx.beginPath();
+  ctx.arc(hx, hy, r * 0.32, 0, Math.PI * 2);
+  ctx.fill();
+
+  return ctx.getImageData(0, 0, size, size);
 }
 
 const EMPTY_STYLE: maplibregl.StyleSpecification = {
@@ -29,7 +77,6 @@ const EMPTY_STYLE: maplibregl.StyleSpecification = {
 
 export default function IndiaMap({
   states,
-  dots,
   indicatorKey,
   selectedState,
   visibleStates,
@@ -62,6 +109,10 @@ export default function IndiaMap({
     map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "bottom-right");
 
     map.on("load", () => {
+      if (!map.hasImage("gel-dot")) {
+        map.addImage("gel-dot", createGelSprite(128), { pixelRatio: 2 });
+      }
+
       map.addSource("states", {
         type: "geojson",
         data: states as unknown as GeoJSON.FeatureCollection,
@@ -126,29 +177,64 @@ export default function IndiaMap({
         filter: ["==", "state", "__none__"],
       });
 
-      // Glow halo (blurred, larger)
+      // Soft outer bloom (blurred circle) — density/intensity reads through
+      // opacity + radius scaling on each point's normalized state value ("v").
       map.addLayer({
-        id: "dots-halo",
+        id: "dots-bloom",
         type: "circle",
         source: "dots",
         paint: {
-          "circle-radius": ["interpolate", ["linear"], ["zoom"], 3, 3.5, 6, 6, 9, 10],
-          "circle-color": "#ff2fb0",
-          "circle-blur": 1.1,
-          "circle-opacity": 0.35,
+          "circle-radius": [
+            "interpolate",
+            ["linear"],
+            ["zoom"],
+            3,
+            ["*", ["get", "size"], ["interpolate", ["linear"], ["get", "v"], 0, 4, 1, 9]],
+            6,
+            ["*", ["get", "size"], ["interpolate", ["linear"], ["get", "v"], 0, 7, 1, 16]],
+            9,
+            ["*", ["get", "size"], ["interpolate", ["linear"], ["get", "v"], 0, 12, 1, 27]],
+          ],
+          "circle-color": [
+            "interpolate",
+            ["linear"],
+            ["get", "v"],
+            0,
+            "#FFD0F7",
+            0.5,
+            "#FF8BEF",
+            1,
+            "#FF43D1",
+          ],
+          "circle-blur": 1.3,
+          "circle-opacity": ["interpolate", ["linear"], ["get", "v"], 0, 0.1, 1, 0.42],
         },
       });
 
-      // Sharp core dot
+      // Glossy gel-sphere marker (sprite): white upper-left hotspot, hot-pink
+      // body, lavender bloom edge. Size + opacity scale with intensity.
       map.addLayer({
-        id: "dots-core",
-        type: "circle",
+        id: "dots-gel",
+        type: "symbol",
         source: "dots",
+        layout: {
+          "icon-image": "gel-dot",
+          "icon-allow-overlap": true,
+          "icon-ignore-placement": true,
+          "icon-size": [
+            "interpolate",
+            ["linear"],
+            ["zoom"],
+            3,
+            ["*", ["get", "size"], ["interpolate", ["linear"], ["get", "v"], 0, 0.05, 1, 0.11]],
+            6,
+            ["*", ["get", "size"], ["interpolate", ["linear"], ["get", "v"], 0, 0.09, 1, 0.19]],
+            9,
+            ["*", ["get", "size"], ["interpolate", ["linear"], ["get", "v"], 0, 0.15, 1, 0.3]],
+          ],
+        },
         paint: {
-          "circle-radius": ["interpolate", ["linear"], ["zoom"], 3, 0.9, 6, 1.6, 9, 2.6],
-          "circle-color": "#ffd1ee",
-          "circle-blur": 0.15,
-          "circle-opacity": 0.9,
+          "icon-opacity": ["interpolate", ["linear"], ["get", "v"], 0, 0.6, 1, 0.98],
         },
       });
 
@@ -197,6 +283,10 @@ export default function IndiaMap({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Synthetic density clusters — stylistic only, not real district data.
+  // Regenerated whenever the indicator changes (values differ per indicator).
+  const dots = useMemo(() => buildClusterDots(states, indicatorKey), [states, indicatorKey]);
+
   // Update dots source when indicator/data changes
   useEffect(() => {
     const map = mapRef.current;
@@ -223,8 +313,8 @@ export default function IndiaMap({
     if (!map || !loadedRef.current) return;
     if (!visibleStates) {
       map.setFilter("states-dim", ["==", "state", "__none__"]);
-      map.setFilter("dots-halo", null);
-      map.setFilter("dots-core", null);
+      map.setFilter("dots-bloom", null);
+      map.setFilter("dots-gel", null);
     } else {
       const allowed = Array.from(visibleStates);
       map.setFilter("states-dim", ["!", ["in", ["get", "state"], ["literal", allowed]]]);
@@ -233,8 +323,8 @@ export default function IndiaMap({
         ["get", "s"],
         ["literal", allowed],
       ];
-      map.setFilter("dots-halo", dotFilter);
-      map.setFilter("dots-core", dotFilter);
+      map.setFilter("dots-bloom", dotFilter);
+      map.setFilter("dots-gel", dotFilter);
     }
   }, [visibleStates]);
 
