@@ -28,22 +28,24 @@ export default function FilterPanel({
 }: FilterPanelProps) {
   return (
     <div className="space-y-3 rounded-xl border border-border bg-panel/80 p-3 backdrop-blur-sm">
-      <div>
-        <label className="mb-1 block text-[10px] uppercase tracking-wide text-text-muted">
-          Indicator
-        </label>
-        <select
-          value={indicatorKey}
-          onChange={(e) => onIndicatorChange(e.target.value)}
-          className="w-full rounded-lg border border-border bg-bg px-2 py-1.5 text-sm text-text-primary focus:outline-none focus:ring-1 focus:ring-glowPink"
-        >
-          {indicators.map((ind) => (
-            <option key={ind.key} value={ind.key}>
-              {ind.label}
-            </option>
-          ))}
-        </select>
-      </div>
+      {indicators.length > 1 && (
+        <div>
+          <label className="mb-1 block text-[10px] uppercase tracking-wide text-text-muted">
+            Indicator
+          </label>
+          <select
+            value={indicatorKey}
+            onChange={(e) => onIndicatorChange(e.target.value)}
+            className="w-full rounded-lg border border-border bg-bg px-2 py-1.5 text-sm text-text-primary focus:outline-none focus:ring-1 focus:ring-glowPink"
+          >
+            {indicators.map((ind) => (
+              <option key={ind.key} value={ind.key}>
+                {ind.label}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
 
       <div>
         <label className="mb-1 block text-[10px] uppercase tracking-wide text-text-muted">
