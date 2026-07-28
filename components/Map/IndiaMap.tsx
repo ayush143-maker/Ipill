@@ -7,10 +7,11 @@ import type { StatesCollection } from "@/lib/types";
 interface IndiaMapProps {
   states: StatesCollection;
   dots: GeoJSON.FeatureCollection | null;
+  indicatorKey: string;
   selectedState: string | null;
   visibleStates: Set<string> | null; // null = no filter (show all)
-  onSelectState: (state: string | null) => void;
-  onHoverState: (state: string | null, x: number, y: number) => void;
+  onSelectState: (stateName: string | null) => void;
+  onHoverState: (stateName: string | null, x: number, y: number) => void;
   flyToBbox: [number, number, number, number] | null;
 }
 
@@ -18,13 +19,18 @@ const EMPTY_STYLE: maplibregl.StyleSpecification = {
   version: 8,
   sources: {},
   layers: [
-    { id: "bg", type: "background", paint: { "background-color": "#0B0B12" } },
+    {
+      id: "bg",
+      type: "background",
+      paint: { "background-color": "#0B0B12" },
+    },
   ],
 };
 
 export default function IndiaMap({
   states,
   dots,
+  indicatorKey,
   selectedState,
   visibleStates,
   onSelectState,
@@ -36,6 +42,7 @@ export default function IndiaMap({
   const loadedRef = useRef(false);
   const hoveredRef = useRef<string | null>(null);
 
+  // Init map once
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
 
@@ -65,7 +72,7 @@ export default function IndiaMap({
         data: { type: "FeatureCollection", features: [] },
       });
 
-      // Clean state outline only - no district lines, avoids clutter
+      // Base state fill (very subtle, mostly for hit-testing + gentle tone)
       map.addLayer({
         id: "states-fill",
         type: "fill",
@@ -75,10 +82,10 @@ export default function IndiaMap({
           "fill-opacity": [
             "case",
             ["boolean", ["feature-state", "selected"], false],
-            0.3,
+            0.35,
             ["boolean", ["feature-state", "hover"], false],
-            0.18,
-            0.015,
+            0.22,
+            0.06,
           ],
         },
       });
@@ -101,65 +108,57 @@ export default function IndiaMap({
             ["boolean", ["feature-state", "selected"], false],
             2,
             ["boolean", ["feature-state", "hover"], false],
-            1.3,
+            1.4,
             0.6,
           ],
         },
       });
 
+      // Dimmed overlay for filtered-out states
       map.addLayer({
         id: "states-dim",
         type: "fill",
         source: "states",
-        paint: { "fill-color": "#0B0B12", "fill-opacity": 0.75 },
+        paint: {
+          "fill-color": "#0B0B12",
+          "fill-opacity": 0.72,
+        },
         filter: ["==", "state", "__none__"],
       });
 
-      // Soft outer bloom
-      map.addLayer({
-        id: "dots-bloom",
-        type: "circle",
-        source: "dots",
-        paint: {
-          "circle-radius": ["interpolate", ["linear"], ["zoom"], 3, 5, 6, 9, 10, 16],
-          "circle-color": "#ff2fb0",
-          "circle-blur": 1.6,
-          "circle-opacity": 0.2,
-        },
-      });
-
-      // Mid glow halo
+      // Glow halo (blurred, larger)
       map.addLayer({
         id: "dots-halo",
         type: "circle",
         source: "dots",
         paint: {
-          "circle-radius": ["interpolate", ["linear"], ["zoom"], 3, 2.2, 6, 4, 10, 7],
-          "circle-color": "#e0399f",
-          "circle-blur": 0.9,
-          "circle-opacity": 0.48,
+          "circle-radius": ["interpolate", ["linear"], ["zoom"], 3, 3.5, 6, 6, 9, 10],
+          "circle-color": "#ff2fb0",
+          "circle-blur": 1.1,
+          "circle-opacity": 0.35,
         },
       });
 
-      // Sharp bright core
+      // Sharp core dot
       map.addLayer({
         id: "dots-core",
         type: "circle",
         source: "dots",
         paint: {
-          "circle-radius": ["interpolate", ["linear"], ["zoom"], 3, 0.7, 6, 1.3, 10, 2.2],
-          "circle-color": "#ffe3f5",
-          "circle-blur": 0.1,
-          "circle-opacity": 0.95,
+          "circle-radius": ["interpolate", ["linear"], ["zoom"], 3, 0.9, 6, 1.6, 9, 2.6],
+          "circle-color": "#ffd1ee",
+          "circle-blur": 0.15,
+          "circle-opacity": 0.9,
         },
       });
 
       loadedRef.current = true;
 
+      // Interactions
       map.on("click", "states-fill", (e) => {
         const f = e.features?.[0];
         if (!f) return;
-        onSelectState((f.properties?.state as string) ?? null);
+        onSelectState(f.properties?.state ?? null);
       });
       map.on("click", (e) => {
         const feats = map.queryRenderedFeatures(e.point, { layers: ["states-fill"] });
@@ -173,17 +172,17 @@ export default function IndiaMap({
         const name = f.properties?.state as string;
         if (hoveredRef.current !== name) {
           if (hoveredRef.current) {
-            map.setFeatureState({ source: "states", id: hoveredRef.current }, { hover: false });
+            setFeatureStateByName(map, hoveredRef.current, { hover: false });
           }
           hoveredRef.current = name;
-          map.setFeatureState({ source: "states", id: name }, { hover: true });
+          setFeatureStateByName(map, name, { hover: true });
         }
         onHoverState(name, e.point.x, e.point.y);
       });
       map.on("mouseleave", "states-fill", () => {
         map.getCanvas().style.cursor = "";
         if (hoveredRef.current) {
-          map.setFeatureState({ source: "states", id: hoveredRef.current }, { hover: false });
+          setFeatureStateByName(map, hoveredRef.current, { hover: false });
           hoveredRef.current = null;
         }
         onHoverState(null, 0, 0);
@@ -198,28 +197,32 @@ export default function IndiaMap({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Update dots source when indicator/data changes
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !loadedRef.current || !dots) return;
     const src = map.getSource("dots") as maplibregl.GeoJSONSource | undefined;
     src?.setData(dots as unknown as GeoJSON.FeatureCollection);
-  }, [dots]);
+  }, [dots, indicatorKey]);
 
+  // Update selected feature-state
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !loadedRef.current) return;
-    for (const f of states.features) {
-      const name = f.properties.state;
-      map.setFeatureState({ source: "states", id: name }, { selected: name === selectedState });
+    // Clear all selections then set the new one
+    const features = (states.features || []) as GeoJSON.Feature[];
+    for (const f of features) {
+      const name = (f.properties as { state?: string })?.state;
+      if (name) setFeatureStateByName(map, name, { selected: name === selectedState });
     }
   }, [selectedState, states]);
 
+  // Apply visibility filter (search / region / range)
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !loadedRef.current) return;
     if (!visibleStates) {
       map.setFilter("states-dim", ["==", "state", "__none__"]);
-      map.setFilter("dots-bloom", null);
       map.setFilter("dots-halo", null);
       map.setFilter("dots-core", null);
     } else {
@@ -230,12 +233,12 @@ export default function IndiaMap({
         ["get", "s"],
         ["literal", allowed],
       ];
-      map.setFilter("dots-bloom", dotFilter);
       map.setFilter("dots-halo", dotFilter);
       map.setFilter("dots-core", dotFilter);
     }
   }, [visibleStates]);
 
+  // Fly to selected state bounds
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !flyToBbox) return;
@@ -244,9 +247,24 @@ export default function IndiaMap({
         [flyToBbox[0], flyToBbox[1]],
         [flyToBbox[2], flyToBbox[3]],
       ],
-      { padding: { top: 100, bottom: 100, left: 60, right: 420 }, duration: 900, maxZoom: 8 }
+      { padding: { top: 80, bottom: 80, left: 80, right: 420 }, duration: 900, maxZoom: 7.5 }
     );
   }, [flyToBbox]);
 
   return <div ref={containerRef} className="absolute inset-0" />;
+}
+
+function setFeatureStateByName(
+  map: MLMap,
+  stateName: string,
+  state: Record<string, boolean>
+) {
+  map.setFeatureState({ source: "states", id: hashId(stateName) }, state);
+}
+
+// MapLibre feature-state requires numeric/string ids on features. We didn't
+// set explicit `id`s in the GeoJSON, so we derive a stable one from the
+// state name (must match promoteId config below).
+function hashId(name: string): string {
+  return name;
 }
