@@ -1,46 +1,34 @@
 "use client";
 
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Cell } from "recharts";
-import { X } from "lucide-react";
-import type { IndicatorMeta, IndicatorNationalStats, StateFeature } from "@/lib/types";
+import { X, TrendingUp, TrendingDown } from "lucide-react";
+import type { IndicatorNationalStats, StateFeature } from "@/lib/types";
 import { STATE_REGION } from "@/lib/regions";
 
 interface StatePanelProps {
   feature: StateFeature;
-  indicatorKey: string;
-  indicators: IndicatorMeta[];
   meta: IndicatorNationalStats;
   onClose: () => void;
 }
 
-export default function StatePanel({
-  feature,
-  indicatorKey,
-  indicators,
-  meta,
-  onClose,
-}: StatePanelProps) {
+export default function StatePanel({ feature, meta, onClose }: StatePanelProps) {
   const props = feature.properties;
-  const value = props[`${indicatorKey}_total`] as number | undefined;
-  const urban = props[`${indicatorKey}_urban`] as number | undefined;
-  const rural = props[`${indicatorKey}_rural`] as number | undefined;
-  const nfhs4 = props[`${indicatorKey}_nfhs4`] as number | undefined;
+  const value = props.pill_total;
+  const diffFromAvg = +(value - meta.national_average).toFixed(1);
   const rank = meta.ranks[props.state];
-  const diffFromAvg = value != null ? +(value - meta.national_average).toFixed(1) : null;
-  const label = indicators.find((i) => i.key === indicatorKey)?.label ?? indicatorKey;
   const region = STATE_REGION[props.state] ?? "—";
 
   const trendData =
-    value != null && nfhs4 != null
+    props.pill_nfhs4 != null
       ? [
-          { round: "NFHS-4\n(2015–16)", value: nfhs4 },
-          { round: "NFHS-5\n(2019–21)", value },
+          { round: "NFHS-4 (2015–16)", value: props.pill_nfhs4 },
+          { round: "NFHS-5 (2019–21)", value },
         ]
       : [];
 
   const compareData = [
-    { name: "Rural", value: rural ?? 0 },
-    { name: "Urban", value: urban ?? 0 },
+    { name: "Rural", value: props.pill_rural },
+    { name: "Urban", value: props.pill_urban },
     { name: "National", value: meta.national_average },
   ];
 
@@ -64,19 +52,17 @@ export default function StatePanel({
 
       <div className="space-y-5 p-4">
         <div>
-          <div className="text-[11px] uppercase tracking-wide text-text-muted">{label}</div>
+          <div className="text-[11px] uppercase tracking-wide text-text-muted">
+            Oral Contraceptive Pill use
+          </div>
           <div className="mt-1 flex items-end gap-2">
-            <span className="text-4xl font-bold text-glowPink">{value ?? "—"}%</span>
-            {diffFromAvg != null && (
-              <span
-                className={`mb-1 text-sm ${
-                  diffFromAvg >= 0 ? "text-emerald-400" : "text-orange-400"
-                }`}
-              >
-                {diffFromAvg >= 0 ? "+" : ""}
-                {diffFromAvg} pts vs national avg
-              </span>
-            )}
+            <span className="text-4xl font-bold text-glowPink">{value}%</span>
+            <span
+              className={`mb-1 text-sm ${diffFromAvg >= 0 ? "text-emerald-400" : "text-orange-400"}`}
+            >
+              {diffFromAvg >= 0 ? "+" : ""}
+              {diffFromAvg} pts vs national avg
+            </span>
           </div>
         </div>
 
@@ -94,6 +80,38 @@ export default function StatePanel({
             </div>
           </div>
         </div>
+
+        {(props.highest_district || props.lowest_district) && (
+          <div>
+            <div className="mb-2 text-[11px] uppercase tracking-wide text-text-muted">
+              Within {props.state} ({props.district_count_in_state} districts)
+            </div>
+            <div className="space-y-1.5">
+              {props.highest_district && (
+                <div className="flex items-center justify-between rounded-lg border border-border bg-black/20 px-3 py-1.5">
+                  <span className="flex items-center gap-1.5 text-xs text-text-secondary">
+                    <TrendingUp size={13} className="text-glowPink" />
+                    Highest: {props.highest_district}
+                  </span>
+                  <span className="text-xs font-semibold text-text-primary">
+                    {props.highest_district_value}%
+                  </span>
+                </div>
+              )}
+              {props.lowest_district && (
+                <div className="flex items-center justify-between rounded-lg border border-border bg-black/20 px-3 py-1.5">
+                  <span className="flex items-center gap-1.5 text-xs text-text-secondary">
+                    <TrendingDown size={13} className="text-text-muted" />
+                    Lowest: {props.lowest_district}
+                  </span>
+                  <span className="text-xs font-semibold text-text-primary">
+                    {props.lowest_district_value}%
+                  </span>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
         <div>
           <div className="mb-2 text-[11px] uppercase tracking-wide text-text-muted">
@@ -145,9 +163,12 @@ export default function StatePanel({
 
         <p className="text-[11px] leading-relaxed text-text-muted">
           Source: National Family Health Survey-5 (2019–21), Ministry of Health &amp; Family
-          Welfare, Government of India. Dot positions on the map are randomized within the
-          state boundary for visual texture; dot count is proportional to this indicator's
-          real value.
+          Welfare, Government of India. This is oral contraceptive pill use, not emergency
+          contraception ("i-Pill") — NFHS does not publish emergency contraceptive use at any
+          level. The state figure above is the real NFHS-5 survey estimate; the highest/lowest
+          district figures and the dot density on the map are computed from the underlying
+          district-level data. Dot positions are randomized within each district for visual
+          texture only.
         </p>
       </div>
     </div>
