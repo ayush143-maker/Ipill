@@ -3,11 +3,11 @@
 import { useMemo, useState } from "react";
 import Fuse from "fuse.js";
 import { Search, X } from "lucide-react";
-import type { DistrictFeature } from "@/lib/types";
+import type { StateFeature } from "@/lib/types";
 
 interface SearchBarProps {
-  features: DistrictFeature[];
-  onSelect: (uid: string) => void;
+  features: StateFeature[];
+  onSelect: (state: string) => void;
 }
 
 export default function SearchBar({ features, onSelect }: SearchBarProps) {
@@ -15,11 +15,7 @@ export default function SearchBar({ features, onSelect }: SearchBarProps) {
   const [focused, setFocused] = useState(false);
 
   const fuse = useMemo(
-    () =>
-      new Fuse(features, {
-        keys: ["properties.district", "properties.state"],
-        threshold: 0.35,
-      }),
+    () => new Fuse(features, { keys: ["properties.state"], threshold: 0.35 }),
     [features]
   );
 
@@ -37,7 +33,7 @@ export default function SearchBar({ features, onSelect }: SearchBarProps) {
           onChange={(e) => setQuery(e.target.value)}
           onFocus={() => setFocused(true)}
           onBlur={() => setTimeout(() => setFocused(false), 150)}
-          placeholder="Search district or state..."
+          placeholder="Search state or union territory..."
           className="w-full bg-transparent text-sm text-text-primary placeholder:text-text-muted focus:outline-none"
         />
         {query && (
@@ -51,15 +47,14 @@ export default function SearchBar({ features, onSelect }: SearchBarProps) {
         <div className="absolute left-0 right-0 top-full z-10 mt-1.5 max-h-64 overflow-y-auto rounded-xl border border-border bg-panel shadow-glow-sm">
           {results.map((r) => (
             <button
-              key={r.item.properties.uid}
+              key={r.item.properties.state}
               onClick={() => {
-                onSelect(r.item.properties.uid);
+                onSelect(r.item.properties.state);
                 setQuery("");
               }}
-              className="flex w-full items-baseline justify-between px-3 py-2 text-left text-sm hover:bg-white/5"
+              className="block w-full px-3 py-2 text-left text-sm text-text-primary hover:bg-white/5"
             >
-              <span className="text-text-primary">{r.item.properties.district}</span>
-              <span className="ml-2 text-xs text-text-muted">{r.item.properties.state}</span>
+              {r.item.properties.state}
             </button>
           ))}
         </div>
