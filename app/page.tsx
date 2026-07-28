@@ -6,7 +6,7 @@ import { SlidersHorizontal, MapPin } from "lucide-react";
 import { useAtlasCore, useIndicatorDots } from "@/lib/useAtlasData";
 import { useIsMobile } from "@/lib/useIsMobile";
 import { STATE_REGION } from "@/lib/regions";
-import type { DistrictFeature, Region } from "@/lib/types";
+import type { Region, StateFeature } from "@/lib/types";
 import SearchBar from "@/components/Search/SearchBar";
 import FilterPanel from "@/components/Filters/FilterPanel";
 import StatsCards from "@/components/Stats/StatsCards";
@@ -28,14 +28,14 @@ const IndiaMap = dynamic(() => import("@/components/Map/IndiaMap"), {
 const DEFAULT_INDICATOR = "pill";
 
 export default function Home() {
-  const { districts, meta, indicators, leaderboard, loading, error } = useAtlasCore();
+  const { states, meta, indicators, leaderboard, loading, error } = useAtlasCore();
   const [indicatorKey, setIndicatorKey] = useState(DEFAULT_INDICATOR);
   const { data: dots } = useIndicatorDots(indicatorKey);
 
-  const [selectedUid, setSelectedUid] = useState<string | null>(null);
+  const [selectedState, setSelectedState] = useState<string | null>(null);
   const [flyToBbox, setFlyToBbox] = useState<[number, number, number, number] | null>(null);
-  const [hover, setHover] = useState<{ uid: string | null; x: number; y: number }>({
-    uid: null,
+  const [hover, setHover] = useState<{ name: string | null; x: number; y: number }>({
+    name: null,
     x: 0,
     y: 0,
   });
@@ -47,37 +47,38 @@ export default function Home() {
   const isMobile = useIsMobile();
 
   const bounds = useMemo<[number, number]>(() => {
-    if (!districts) return [0, 100];
-    const vals = districts.features.map((f) => f.properties.pill_total);
+    if (!states) return [0, 100];
+    const vals = states.features.map((f) => f.properties.pill_total);
     return [0, Math.ceil(Math.max(...vals))];
-  }, [districts]);
+  }, [states]);
 
   useEffect(() => {
     setRange(bounds);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [indicatorKey, districts]);
+  }, [indicatorKey, states]);
 
-  const visibleUids = useMemo<Set<string> | null>(() => {
-    if (!districts) return null;
+  const visibleStates = useMemo<Set<string> | null>(() => {
+    if (!states) return null;
     const regionFiltering = activeRegions.size > 0;
     const rangeFiltering = range[0] > bounds[0] || range[1] < bounds[1];
     if (!regionFiltering && !rangeFiltering) return null;
 
     const set = new Set<string>();
-    for (const f of districts.features) {
-      const region = STATE_REGION[f.properties.state];
+    for (const f of states.features) {
+      const name = f.properties.state;
+      const region = STATE_REGION[name];
       const value = f.properties.pill_total;
       const regionOk = !regionFiltering || (region && activeRegions.has(region));
       const rangeOk = value >= range[0] && value <= range[1];
-      if (regionOk && rangeOk) set.add(f.properties.uid);
+      if (regionOk && rangeOk) set.add(name);
     }
     return set;
-  }, [districts, activeRegions, range, bounds]);
+  }, [states, activeRegions, range, bounds]);
 
-  function selectDistrict(uid: string | null) {
-    setSelectedUid(uid);
-    if (uid && districts) {
-      const f = districts.features.find((ft) => ft.properties.uid === uid);
+  function selectState(name: string | null) {
+    setSelectedState(name);
+    if (name && states) {
+      const f = states.features.find((ft) => ft.properties.state === name);
       if (f?.properties.bbox) setFlyToBbox([...f.properties.bbox]);
     }
   }
@@ -95,15 +96,15 @@ export default function Home() {
     setRange(bounds);
   }
 
-  const selectedFeature: DistrictFeature | null = useMemo(() => {
-    if (!districts || !selectedUid) return null;
-    return districts.features.find((f) => f.properties.uid === selectedUid) ?? null;
-  }, [districts, selectedUid]);
+  const selectedFeature: StateFeature | null = useMemo(() => {
+    if (!states || !selectedState) return null;
+    return states.features.find((f) => f.properties.state === selectedState) ?? null;
+  }, [states, selectedState]);
 
-  const hoveredFeature: DistrictFeature | null = useMemo(() => {
-    if (!districts || !hover.uid) return null;
-    return districts.features.find((f) => f.properties.uid === hover.uid) ?? null;
-  }, [districts, hover.uid]);
+  const hoveredFeature: StateFeature | null = useMemo(() => {
+    if (!states || !hover.name) return null;
+    return states.features.find((f) => f.properties.state === hover.name) ?? null;
+  }, [states, hover.name]);
 
   if (error) {
     return (
@@ -115,14 +116,14 @@ export default function Home() {
 
   return (
     <main className="relative h-screen w-screen overflow-hidden bg-bg">
-      {districts && (
+      {states && (
         <IndiaMap
-          districts={districts}
+          states={states}
           dots={dots}
-          selectedUid={selectedUid}
-          visibleUids={visibleUids}
-          onSelectDistrict={selectDistrict}
-          onHoverDistrict={(uid, x, y) => setHover({ uid, x, y })}
+          selectedState={selectedState}
+          visibleStates={visibleStates}
+          onSelectState={selectState}
+          onHoverState={(name, x, y) => setHover({ name, x, y })}
           flyToBbox={flyToBbox}
         />
       )}
@@ -141,7 +142,7 @@ export default function Home() {
             </span>
           </div>
           <div className="flex-1">
-            {districts && <SearchBar features={districts.features} onSelect={selectDistrict} />}
+            {states && <SearchBar features={states.features} onSelect={selectState} />}
           </div>
           <button
             onClick={() => setFiltersOpen((v) => !v)}
@@ -169,7 +170,7 @@ export default function Home() {
               indicatorKey={indicatorKey}
               onIndicatorChange={(k) => {
                 setIndicatorKey(k);
-                setSelectedUid(null);
+                setSelectedState(null);
               }}
               activeRegions={activeRegions}
               onToggleRegion={toggleRegion}
@@ -189,35 +190,26 @@ export default function Home() {
 
       {loading && (
         <div className="absolute inset-0 z-20 flex items-center justify-center bg-bg/70 backdrop-blur-sm">
-          <div className="text-sm text-text-secondary">Loading NFHS-5 district atlas…</div>
+          <div className="text-sm text-text-secondary">Loading NFHS-5 atlas data…</div>
         </div>
       )}
 
       {/* Desktop side panel */}
-      {!isMobile && selectedFeature && meta && leaderboard && (
+      {!isMobile && selectedFeature && meta && (
         <div className="absolute right-0 top-0 z-20 h-full w-[380px] border-l border-border bg-panel/95 shadow-glow backdrop-blur-md">
-          <DistrictPanel
-            feature={selectedFeature}
-            meta={meta[indicatorKey]}
-            leaderboard={leaderboard}
-            onClose={() => selectDistrict(null)}
-          />
+          <StatePanel feature={selectedFeature} meta={meta[indicatorKey]} onClose={() => selectState(null)} />
         </div>
       )}
 
       {/* Mobile bottom sheet */}
       {isMobile && (
-        <BottomSheet open={!!selectedFeature} onClose={() => selectDistrict(null)}>
-          {selectedFeature && meta && leaderboard && (
-            <DistrictPanel
-              feature={selectedFeature}
-              meta={meta[indicatorKey]}
-              leaderboard={leaderboard}
-              onClose={() => selectDistrict(null)}
-            />
+        <BottomSheet open={!!selectedFeature} onClose={() => selectState(null)}>
+          {selectedFeature && meta && (
+            <StatePanel feature={selectedFeature} meta={meta[indicatorKey]} onClose={() => selectState(null)} />
           )}
         </BottomSheet>
       )}
     </main>
   );
-}
+            }
+                     
