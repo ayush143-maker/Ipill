@@ -2,15 +2,15 @@
 
 import { useEffect, useRef } from "react";
 import maplibregl, { Map as MLMap } from "maplibre-gl";
-import type { DistrictsCollection } from "@/lib/types";
+import type { StatesCollection } from "@/lib/types";
 
 interface IndiaMapProps {
-  districts: DistrictsCollection;
+  states: StatesCollection;
   dots: GeoJSON.FeatureCollection | null;
-  selectedUid: string | null;
-  visibleUids: Set<string> | null; // null = no filter (show all)
-  onSelectDistrict: (uid: string | null) => void;
-  onHoverDistrict: (uid: string | null, x: number, y: number) => void;
+  selectedState: string | null;
+  visibleStates: Set<string> | null; // null = no filter (show all)
+  onSelectState: (state: string | null) => void;
+  onHoverState: (state: string | null, x: number, y: number) => void;
   flyToBbox: [number, number, number, number] | null;
 }
 
@@ -18,21 +18,17 @@ const EMPTY_STYLE: maplibregl.StyleSpecification = {
   version: 8,
   sources: {},
   layers: [
-    {
-      id: "bg",
-      type: "background",
-      paint: { "background-color": "#0B0B12" },
-    },
+    { id: "bg", type: "background", paint: { "background-color": "#0B0B12" } },
   ],
 };
 
 export default function IndiaMap({
-  districts,
+  states,
   dots,
-  selectedUid,
-  visibleUids,
-  onSelectDistrict,
-  onHoverDistrict,
+  selectedState,
+  visibleStates,
+  onSelectState,
+  onHoverState,
   flyToBbox,
 }: IndiaMapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -49,7 +45,7 @@ export default function IndiaMap({
       center: [82.5, 22.5],
       zoom: 3.6,
       minZoom: 3,
-      maxZoom: 11,
+      maxZoom: 10,
       pitchWithRotate: false,
       dragRotate: false,
       attributionControl: false,
@@ -59,37 +55,38 @@ export default function IndiaMap({
     map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "bottom-right");
 
     map.on("load", () => {
-      map.addSource("districts", {
+      map.addSource("states", {
         type: "geojson",
-        data: districts as unknown as GeoJSON.FeatureCollection,
-        promoteId: "uid",
+        data: states as unknown as GeoJSON.FeatureCollection,
+        promoteId: "state",
       });
       map.addSource("dots", {
         type: "geojson",
         data: { type: "FeatureCollection", features: [] },
       });
 
+      // Clean state outline only - no district lines, avoids clutter
       map.addLayer({
-        id: "districts-fill",
+        id: "states-fill",
         type: "fill",
-        source: "districts",
+        source: "states",
         paint: {
           "fill-color": "#1a1a28",
           "fill-opacity": [
             "case",
             ["boolean", ["feature-state", "selected"], false],
-            0.32,
+            0.3,
             ["boolean", ["feature-state", "hover"], false],
-            0.2,
-            0.02,
+            0.18,
+            0.015,
           ],
         },
       });
 
       map.addLayer({
-        id: "districts-line",
+        id: "states-line",
         type: "line",
-        source: "districts",
+        source: "states",
         paint: {
           "line-color": [
             "case",
@@ -97,28 +94,28 @@ export default function IndiaMap({
             "#ff2fb0",
             ["boolean", ["feature-state", "hover"], false],
             "#a855f7",
-            "#22222f",
+            "#2a2a3a",
           ],
           "line-width": [
             "case",
             ["boolean", ["feature-state", "selected"], false],
             2,
             ["boolean", ["feature-state", "hover"], false],
-            1.2,
-            0.35,
+            1.3,
+            0.6,
           ],
         },
       });
 
       map.addLayer({
-        id: "districts-dim",
+        id: "states-dim",
         type: "fill",
-        source: "districts",
-        paint: { "fill-color": "#0B0B12", "fill-opacity": 0.78 },
-        filter: ["==", "uid", "__none__"],
+        source: "states",
+        paint: { "fill-color": "#0B0B12", "fill-opacity": 0.75 },
+        filter: ["==", "state", "__none__"],
       });
 
-      // Wide, soft outer bloom
+      // Soft outer bloom
       map.addLayer({
         id: "dots-bloom",
         type: "circle",
@@ -127,7 +124,7 @@ export default function IndiaMap({
           "circle-radius": ["interpolate", ["linear"], ["zoom"], 3, 5, 6, 9, 10, 16],
           "circle-color": "#ff2fb0",
           "circle-blur": 1.6,
-          "circle-opacity": 0.22,
+          "circle-opacity": 0.2,
         },
       });
 
@@ -140,7 +137,7 @@ export default function IndiaMap({
           "circle-radius": ["interpolate", ["linear"], ["zoom"], 3, 2.2, 6, 4, 10, 7],
           "circle-color": "#e0399f",
           "circle-blur": 0.9,
-          "circle-opacity": 0.5,
+          "circle-opacity": 0.48,
         },
       });
 
@@ -159,37 +156,37 @@ export default function IndiaMap({
 
       loadedRef.current = true;
 
-      map.on("click", "districts-fill", (e) => {
+      map.on("click", "states-fill", (e) => {
         const f = e.features?.[0];
         if (!f) return;
-        onSelectDistrict((f.properties?.uid as string) ?? null);
+        onSelectState((f.properties?.state as string) ?? null);
       });
       map.on("click", (e) => {
-        const feats = map.queryRenderedFeatures(e.point, { layers: ["districts-fill"] });
-        if (feats.length === 0) onSelectDistrict(null);
+        const feats = map.queryRenderedFeatures(e.point, { layers: ["states-fill"] });
+        if (feats.length === 0) onSelectState(null);
       });
 
-      map.on("mousemove", "districts-fill", (e) => {
+      map.on("mousemove", "states-fill", (e) => {
         map.getCanvas().style.cursor = "pointer";
         const f = e.features?.[0];
         if (!f) return;
-        const uid = f.properties?.uid as string;
-        if (hoveredRef.current !== uid) {
+        const name = f.properties?.state as string;
+        if (hoveredRef.current !== name) {
           if (hoveredRef.current) {
-            map.setFeatureState({ source: "districts", id: hoveredRef.current }, { hover: false });
+            map.setFeatureState({ source: "states", id: hoveredRef.current }, { hover: false });
           }
-          hoveredRef.current = uid;
-          map.setFeatureState({ source: "districts", id: uid }, { hover: true });
+          hoveredRef.current = name;
+          map.setFeatureState({ source: "states", id: name }, { hover: true });
         }
-        onHoverDistrict(uid, e.point.x, e.point.y);
+        onHoverState(name, e.point.x, e.point.y);
       });
-      map.on("mouseleave", "districts-fill", () => {
+      map.on("mouseleave", "states-fill", () => {
         map.getCanvas().style.cursor = "";
         if (hoveredRef.current) {
-          map.setFeatureState({ source: "districts", id: hoveredRef.current }, { hover: false });
+          map.setFeatureState({ source: "states", id: hoveredRef.current }, { hover: false });
           hoveredRef.current = null;
         }
-        onHoverDistrict(null, 0, 0);
+        onHoverState(null, 0, 0);
       });
     });
 
@@ -211,35 +208,33 @@ export default function IndiaMap({
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !loadedRef.current) return;
-    for (const f of districts.features) {
-      const uid = f.properties.uid;
-      map.setFeatureState({ source: "districts", id: uid }, { selected: uid === selectedUid });
+    for (const f of states.features) {
+      const name = f.properties.state;
+      map.setFeatureState({ source: "states", id: name }, { selected: name === selectedState });
     }
-  }, [selectedUid, districts]);
+  }, [selectedState, states]);
 
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !loadedRef.current) return;
-    if (!visibleUids) {
-      map.setFilter("districts-dim", ["==", "uid", "__none__"]);
+    if (!visibleStates) {
+      map.setFilter("states-dim", ["==", "state", "__none__"]);
       map.setFilter("dots-bloom", null);
       map.setFilter("dots-halo", null);
       map.setFilter("dots-core", null);
     } else {
-      const allowed = Array.from(visibleUids);
-      map.setFilter("districts-dim", ["!", ["in", ["get", "uid"], ["literal", allowed]]]);
-      const dotUid: maplibregl.ExpressionSpecification = [
-        "concat",
+      const allowed = Array.from(visibleStates);
+      map.setFilter("states-dim", ["!", ["in", ["get", "state"], ["literal", allowed]]]);
+      const dotFilter: maplibregl.FilterSpecification = [
+        "in",
         ["get", "s"],
-        "|",
-        ["get", "d"],
+        ["literal", allowed],
       ];
-      const dotFilter: maplibregl.FilterSpecification = ["in", dotUid, ["literal", allowed]];
       map.setFilter("dots-bloom", dotFilter);
       map.setFilter("dots-halo", dotFilter);
       map.setFilter("dots-core", dotFilter);
     }
-  }, [visibleUids]);
+  }, [visibleStates]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -249,7 +244,7 @@ export default function IndiaMap({
         [flyToBbox[0], flyToBbox[1]],
         [flyToBbox[2], flyToBbox[3]],
       ],
-      { padding: { top: 100, bottom: 100, left: 60, right: 420 }, duration: 900, maxZoom: 9.5 }
+      { padding: { top: 100, bottom: 100, left: 60, right: 420 }, duration: 900, maxZoom: 8 }
     );
   }, [flyToBbox]);
 
