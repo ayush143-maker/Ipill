@@ -5,9 +5,17 @@ import type { IndicatorNationalStats } from "@/lib/types";
 export default function StatsCards({ stats }: { stats: IndicatorNationalStats }) {
   const cards = [
     { label: "National Average", value: `${stats.national_average}%` },
-    { label: "Highest", value: `${stats.highest.value}%`, sub: stats.highest.state },
-    { label: "Lowest", value: `${stats.lowest.value}%`, sub: stats.lowest.state },
-    { label: "States / UTs", value: String(stats.count) },
+    {
+      label: "Highest",
+      value: `${stats.highest.value}%`,
+      sub: `${stats.highest.district}, ${stats.highest.state}`,
+    },
+    {
+      label: "Lowest",
+      value: `${stats.lowest.value}%`,
+      sub: `${stats.lowest.district}, ${stats.lowest.state}`,
+    },
+    { label: "Districts", value: String(stats.count) },
   ];
 
   return (
