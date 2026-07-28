@@ -1,31 +1,26 @@
 // build-data.mjs
 //
-// DATA PROVENANCE (read this before you trust any number on the map):
-// - raw-data/nfhs5_family_planning_states.json is extracted from the
-//   official NFHS-5 (2019-21) State Factsheet compendium, via the public
-//   extraction repo https://github.com/jvargh7/nfhs5_factsheets
-//   (indicators 28-35: "Current use of family planning methods").
-// - There is NO published NFHS indicator specifically for "i-Pill" /
-//   emergency contraceptive USE at state or district level. The closest
-//   real, sourced proxy is indicator 33, "Pill (%)" - current use of the
-//   regular oral contraceptive pill among currently married women 15-49.
-//   This app uses that as the default indicator and labels it honestly
-//   in the UI rather than calling it "i-Pill usage".
-// - Boundaries are state/UT level only (36 states/UTs; district boundaries
-//   are a separate, larger effort - see README "Adding district data").
-// - Dot POSITIONS within each state are randomly generated for visual
-//   texture only; they do not represent real household locations. Dot
-//   COUNT per state is proportional to the real indicator value.
+// DATA PROVENANCE:
+// - raw-data/nfhs5_districts_raw.csv is the full NFHS-5 (2019-21) District
+//   Factsheet extract from https://github.com/jvargh7/nfhs5_factsheets
+//   (long format: state, district, Indicator, NFHS5, NFHS4). We use
+//   indicator "25. Pill (%)" - current use of the oral contraceptive pill
+//   among currently married women 15-49, per district. This is a REAL,
+//   sourced, district-level figure - not the same thing as "i-Pill"
+//   (emergency contraception), which NFHS does not measure at all.
+// - raw-data/districts_boundaries_raw.geojson is simplified from
+//   datta07/INDIAN-SHAPEFILES (INDIA_DISTRICTS.geojson), a community-
+//   maintained district shapefile of variable vintage/accuracy.
 //
-// Merges NFHS-5 state-level family planning indicators with state boundary
-// GeoJSON, and precomputes randomized "glow dot" point features inside each
-// state polygon (count proportional to the selected indicator value).
+// MATCHING: district names are matched between the two sources by
+// normalizing (uppercase, strip punctuation, strip "AND", 24->24, etc.)
+// then exact match, falling back to fuzzy match (Dice coefficient) within
+// the same state. This is NOT perfect - India's district boundaries have
+// changed a lot (splits, renames) between when each source was compiled.
+// Every match, its method, and every miss is logged to
+// public/data/match-report.json so the gap is auditable, not hidden.
 //
-// Run with: npm run build:data  (from project root)
-// Outputs:
-//   public/data/states.geojson   (state boundaries + all indicator props)
-//   public/data/dots.geojson     (precomputed dot points for every indicator)
-//   public/data/meta.json        (national stats per indicator)
+// Run with: npm run build:data
 
 import fs from "fs";
 import path from "path";
@@ -36,155 +31,267 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, "..");
 const p = (...parts) => path.join(ROOT, ...parts);
 
-const statesGeo = JSON.parse(fs.readFileSync(p("raw-data/states_boundaries_raw.geojson"), "utf8"));
-const nfhs = JSON.parse(fs.readFileSync(p("raw-data/nfhs5_family_planning_states.json"), "utf8"));
+const districtsGeo = JSON.parse(
+  fs.readFileSync(p("raw-data/districts_boundaries_raw.geojson"), "utf8")
+);
 
-// Map GeoJSON STNAME_SH -> NFHS-5 state key
-const NAME_MAP = {
-  "Andaman & Nicobar": "Andaman & Nicobar Islands",
-  "Delhi": "NCT of Delhi",
-  "Dadra & Nagar Haveli": "Dadra & Nagar Haveli and Daman & Diu",
-  "Daman & Diu": "Dadra & Nagar Haveli and Daman & Diu",
+const INDICATOR_STRING = "25. Pill (%)";
+const DOT_SCALE = 3.2; // dots per percentage point per district (denser, finer texture)
+const MAX_DOTS = 140;
+const MIN_DOTS = 4;
+
+// ---- 1. Parse NFHS-5 district CSV (long format) ----
+function parseCsvLine(line) {
+  const out = [];
+  let cur = "";
+  let inQuotes = false;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (ch === '"') {
+      inQuotes = !inQuotes;
+    } else if (ch === "," && !inQuotes) {
+      out.push(cur);
+      cur = "";
+    } else {
+      cur += ch;
+    }
+  }
+  out.push(cur);
+  return out;
+}
+
+const rawCsv = fs.readFileSync(p("raw-data/nfhs5_districts_raw.csv"), "utf8");
+const lines = rawCsv.split(/\r?\n/).filter(Boolean);
+const header = parseCsvLine(lines[0]);
+const idx = Object.fromEntries(header.map((h, i) => [h, i]));
+
+const pillRows = [];
+for (let i = 1; i < lines.length; i++) {
+  const cols = parseCsvLine(lines[i]);
+  if (cols[idx["Indicator"]] !== INDICATOR_STRING) continue;
+  const state = cols[idx["state"]];
+  const district = cols[idx["district"]];
+  const nfhs5 = parseFloat(cols[idx["NFHS5"]]);
+  const nfhs4 = parseFloat(cols[idx["NFHS4"]]);
+  if (!state || !district || Number.isNaN(nfhs5)) continue;
+  pillRows.push({ state, district, nfhs5, nfhs4: Number.isNaN(nfhs4) ? null : nfhs4 });
+}
+console.log(`Parsed ${pillRows.length} district rows with a valid Pill (%) value.`);
+
+// ---- 2. Name normalization + matching ----
+const STATE_ALIASES = {
+  "NCT DELHI": "DELHI",
 };
 
-const INDICATORS = [
-  { key: "pill", label: "Oral Contraceptive Pill use" },
-  { key: "modern_method", label: "Any modern method" },
-  { key: "any_method", label: "Any method (modern + traditional)" },
-  { key: "female_sterilization", label: "Female sterilization" },
-  { key: "condom", label: "Condom" },
-  { key: "iud", label: "IUD / PPIUD" },
-  { key: "injectables", label: "Injectables" },
-];
+function norm(s) {
+  let out = (s || "").toUpperCase();
+  out = out.replace(/&/g, " AND ");
+  out = out.replace(/[^A-Z0-9 ]/g, " ");
+  out = out.replace(/\bAND\b/g, " ");
+  out = out.replace(/\bTWENTY FOUR\b/g, "24");
+  out = out.replace(/\s+/g, " ").trim();
+  return STATE_ALIASES[out] || out;
+}
 
-// Dots-per-percentage-point scale factor, tuned so busiest state ~500-700 dots
-const DOT_SCALE = 18;
-const MAX_DOTS_PER_STATE = 900;
-const MIN_DOTS_PER_STATE = 6;
-
-let missing = [];
-const mergedFeatures = [];
-
-for (const feature of statesGeo.features) {
-  const shName = feature.properties.STNAME_SH;
-  const nfhsKey = NAME_MAP[shName] || shName;
-  const stats = nfhs[nfhsKey];
-  if (!stats) {
-    missing.push(shName);
-    continue;
-  }
-
-  const bbox = turf.bbox(feature);
-  const props = {
-    state: shName,
-    state_code: feature.properties.STCODE11,
-    nfhs_name: nfhsKey,
-    bbox: [bbox[0], bbox[1], bbox[2], bbox[3]],
+function diceCoefficient(a, b) {
+  if (a === b) return 1;
+  if (a.length < 2 || b.length < 2) return 0;
+  const bigrams = (s) => {
+    const m = new Map();
+    for (let i = 0; i < s.length - 1; i++) {
+      const bg = s.slice(i, i + 2);
+      m.set(bg, (m.get(bg) || 0) + 1);
+    }
+    return m;
   };
-  for (const { key } of INDICATORS) {
-    if (stats[key]) {
-      props[`${key}_total`] = stats[key].total;
-      props[`${key}_urban`] = stats[key].urban;
-      props[`${key}_rural`] = stats[key].rural;
-      props[`${key}_nfhs4`] = stats[key].nfhs4;
+  const ma = bigrams(a);
+  const mb = bigrams(b);
+  let overlap = 0;
+  for (const [bg, count] of ma) {
+    if (mb.has(bg)) overlap += Math.min(count, mb.get(bg));
+  }
+  return (2 * overlap) / (a.length - 1 + (b.length - 1));
+}
+
+const geoByState = new Map();
+for (const feature of districtsGeo.features) {
+  const st = norm(feature.properties.state);
+  const di = norm(feature.properties.district);
+  if (!st || !di) continue;
+  if (!geoByState.has(st)) geoByState.set(st, new Map());
+  geoByState.get(st).set(di, feature);
+}
+
+const matchReport = { exact: [], fuzzy: [], unmatched: [] };
+const mergedFeatures = [];
+const usedFeatureRefs = new Set();
+
+for (const row of pillRows) {
+  const st = norm(row.state);
+  const di = norm(row.district);
+  const candidates = geoByState.get(st);
+  let feature = null;
+  let method = null;
+
+  if (candidates?.has(di)) {
+    feature = candidates.get(di);
+    method = "exact";
+  } else if (candidates) {
+    let best = null;
+    let bestScore = 0;
+    for (const [candName, candFeature] of candidates) {
+      const score = diceCoefficient(di, candName);
+      if (score > bestScore) {
+        bestScore = score;
+        best = candFeature;
+      }
+    }
+    if (best && bestScore >= 0.6) {
+      feature = best;
+      method = "fuzzy";
     }
   }
 
+  if (!feature) {
+    matchReport.unmatched.push({ state: row.state, district: row.district });
+    continue;
+  }
+
+  const refKey = feature.properties.district + "|" + feature.properties.state;
+  if (usedFeatureRefs.has(refKey)) {
+    matchReport.unmatched.push({
+      state: row.state,
+      district: row.district,
+      reason: "duplicate boundary",
+    });
+    continue;
+  }
+  usedFeatureRefs.add(refKey);
+
+  matchReport[method].push({
+    state: row.state,
+    district: row.district,
+    matched_to: feature.properties.district,
+  });
+
+  const bbox = turf.bbox(feature);
   mergedFeatures.push({
     type: "Feature",
-    properties: props,
+    properties: {
+      uid: `${row.state}|${row.district}`,
+      state: row.state,
+      district: row.district,
+      pill_total: row.nfhs5,
+      pill_nfhs4: row.nfhs4,
+      bbox: [bbox[0], bbox[1], bbox[2], bbox[3]],
+    },
     geometry: feature.geometry,
   });
 }
 
-console.log("Unmatched states:", missing);
-console.log("Merged features:", mergedFeatures.length);
+console.log(
+  `Matched: ${matchReport.exact.length} exact + ${matchReport.fuzzy.length} fuzzy = ${
+    matchReport.exact.length + matchReport.fuzzy.length
+  } / ${pillRows.length} (${(
+    ((matchReport.exact.length + matchReport.fuzzy.length) / pillRows.length) *
+    100
+  ).toFixed(1)}%). Unmatched: ${matchReport.unmatched.length}.`
+);
 
-const outStates = { type: "FeatureCollection", features: mergedFeatures };
 fs.mkdirSync(p("public/data"), { recursive: true });
-fs.writeFileSync(p("public/data/states.geojson"), JSON.stringify(outStates));
+fs.writeFileSync(p("public/data/match-report.json"), JSON.stringify(matchReport, null, 2));
 
-// ---- Precompute dot points per indicator ----
-// Rejection-sample random points inside each polygon's bbox until inside.
+// ---- 3. Write merged district boundaries ----
+const outDistricts = { type: "FeatureCollection", features: mergedFeatures };
+fs.writeFileSync(p("public/data/districts.geojson"), JSON.stringify(outDistricts));
+
+// ---- 4. National + rank stats ----
+const sorted = [...mergedFeatures].sort(
+  (a, b) => b.properties.pill_total - a.properties.pill_total
+);
+const values = mergedFeatures.map((f) => f.properties.pill_total);
+const nationalAvg = +(values.reduce((a, b) => a + b, 0) / values.length).toFixed(1);
+const ranks = {};
+sorted.forEach((f, i) => {
+  ranks[`${f.properties.state}|${f.properties.district}`] = i + 1;
+});
+
+const meta = {
+  pill: {
+    label: "Oral Contraceptive Pill use (current use, married women 15-49)",
+    national_average: nationalAvg,
+    highest: {
+      district: sorted[0].properties.district,
+      state: sorted[0].properties.state,
+      value: sorted[0].properties.pill_total,
+    },
+    lowest: {
+      district: sorted[sorted.length - 1].properties.district,
+      state: sorted[sorted.length - 1].properties.state,
+      value: sorted[sorted.length - 1].properties.pill_total,
+    },
+    count: mergedFeatures.length,
+    ranks,
+  },
+};
+fs.writeFileSync(p("public/data/meta.json"), JSON.stringify(meta, null, 2));
+
+// ---- 5. State leaderboard (avg of matched districts per state) ----
+const byState = new Map();
+for (const f of mergedFeatures) {
+  const s = f.properties.state;
+  if (!byState.has(s)) byState.set(s, []);
+  byState.get(s).push(f.properties.pill_total);
+}
+const leaderboard = Array.from(byState.entries())
+  .map(([state, vals]) => ({
+    state,
+    avg: +(vals.reduce((a, b) => a + b, 0) / vals.length).toFixed(1),
+    district_count: vals.length,
+  }))
+  .sort((a, b) => b.avg - a.avg);
+fs.writeFileSync(p("public/data/state_leaderboard.json"), JSON.stringify(leaderboard, null, 2));
+
+// ---- 6. Precompute dense dot layer ----
 function randomPointsInFeature(feature, count) {
   const pts = [];
   const bbox = turf.bbox(feature);
   let attempts = 0;
-  const maxAttempts = count * 40 + 200;
+  const maxAttempts = count * 50 + 300;
   while (pts.length < count && attempts < maxAttempts) {
     attempts++;
     const lng = bbox[0] + Math.random() * (bbox[2] - bbox[0]);
     const lat = bbox[1] + Math.random() * (bbox[3] - bbox[1]);
     const pt = turf.point([lng, lat]);
-    if (turf.booleanPointInPolygon(pt, feature)) {
-      pts.push([lng, lat]);
-    }
+    if (turf.booleanPointInPolygon(pt, feature)) pts.push([lng, lat]);
   }
   return pts;
 }
-
-// One compact file per indicator, fetched lazily on the client only when
-// that indicator is selected. Coordinates rounded to 4dp (~11m) to keep
-// payloads small on low-end mobile connections.
 const round4 = (n) => Math.round(n * 10000) / 10000;
 
 fs.mkdirSync(p("public/data/dots"), { recursive: true });
-for (const { key } of INDICATORS) {
-  const dotFeatures = [];
-  for (const feature of mergedFeatures) {
-    const val = feature.properties[`${key}_total`];
-    if (val == null) continue;
-    const count = Math.max(
-      MIN_DOTS_PER_STATE,
-      Math.min(MAX_DOTS_PER_STATE, Math.round(val * DOT_SCALE))
-    );
-    const points = randomPointsInFeature(feature, count);
-    for (const [lng, lat] of points) {
-      dotFeatures.push({
-        type: "Feature",
-        properties: { s: feature.properties.state, v: val },
-        geometry: { type: "Point", coordinates: [round4(lng), round4(lat)] },
-      });
-    }
+const dotFeatures = [];
+for (const feature of mergedFeatures) {
+  const val = feature.properties.pill_total;
+  const count = Math.max(MIN_DOTS, Math.min(MAX_DOTS, Math.round(val * DOT_SCALE)));
+  const points = randomPointsInFeature(feature, count);
+  for (const [lng, lat] of points) {
+    dotFeatures.push({
+      type: "Feature",
+      properties: { s: feature.properties.state, d: feature.properties.district, v: val },
+      geometry: { type: "Point", coordinates: [round4(lng), round4(lat)] },
+    });
   }
-  fs.writeFileSync(
-    p(`public/data/dots/${key}.geojson`),
-    JSON.stringify({ type: "FeatureCollection", features: dotFeatures })
-  );
-  console.log(`Indicator ${key}: ${dotFeatures.length} dots -> dots/${key}.geojson`);
 }
+fs.writeFileSync(
+  p("public/data/dots/pill.geojson"),
+  JSON.stringify({ type: "FeatureCollection", features: dotFeatures })
+);
+console.log(`Generated ${dotFeatures.length} dots across ${mergedFeatures.length} districts.`);
 
-// ---- National meta stats per indicator ----
-const meta = {};
-for (const { key, label } of INDICATORS) {
-  const values = mergedFeatures
-    .map((f) => f.properties[`${key}_total`])
-    .filter((v) => v != null);
-  const sorted = [...mergedFeatures]
-    .filter((f) => f.properties[`${key}_total`] != null)
-    .sort((a, b) => b.properties[`${key}_total`] - a.properties[`${key}_total`]);
-  meta[key] = {
-    label,
-    national_average: +(values.reduce((a, b) => a + b, 0) / values.length).toFixed(1),
-    highest: {
-      state: sorted[0].properties.state,
-      value: sorted[0].properties[`${key}_total`],
-    },
-    lowest: {
-      state: sorted[sorted.length - 1].properties.state,
-      value: sorted[sorted.length - 1].properties[`${key}_total`],
-    },
-    count: values.length,
-    // rank lookup: state -> national rank (1 = highest)
-    ranks: Object.fromEntries(
-      sorted.map((f, i) => [f.properties.state, i + 1])
-    ),
-  };
-}
-fs.writeFileSync(p("public/data/meta.json"), JSON.stringify(meta, null, 2));
 fs.writeFileSync(
   p("public/data/indicators.json"),
-  JSON.stringify(INDICATORS, null, 2)
+  JSON.stringify([{ key: "pill", label: meta.pill.label }], null, 2)
 );
 
 console.log("Done. Files written to public/data/");
