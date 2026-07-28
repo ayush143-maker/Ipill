@@ -3,7 +3,7 @@
 import dynamic from "next/dynamic";
 import { useEffect, useMemo, useState } from "react";
 import { SlidersHorizontal, MapPin } from "lucide-react";
-import { useAtlasCore, useIndicatorDots } from "@/lib/useAtlasData";
+import { useAtlasCore } from "@/lib/useAtlasData";
 import { useIsMobile } from "@/lib/useIsMobile";
 import { STATE_REGION } from "@/lib/regions";
 import type { Region, StateFeature } from "@/lib/types";
@@ -29,7 +29,6 @@ const DEFAULT_INDICATOR = "pill";
 export default function Home() {
   const { states, meta, indicators, loading, error } = useAtlasCore();
   const [indicatorKey, setIndicatorKey] = useState(DEFAULT_INDICATOR);
-  const { data: dots } = useIndicatorDots(indicatorKey);
 
   const [selectedState, setSelectedState] = useState<string | null>(null);
   const [flyToBbox, setFlyToBbox] = useState<[number, number, number, number] | null>(null);
@@ -122,7 +121,6 @@ export default function Home() {
       {states && (
         <IndiaMap
           states={states}
-          dots={dots}
           indicatorKey={indicatorKey}
           selectedState={selectedState}
           visibleStates={visibleStates}
