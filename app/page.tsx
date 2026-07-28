@@ -11,7 +11,7 @@ import SearchBar from "@/components/Search/SearchBar";
 import FilterPanel from "@/components/Filters/FilterPanel";
 import StatsCards from "@/components/Stats/StatsCards";
 import Leaderboard from "@/components/Stats/Leaderboard";
-import DistrictPanel from "@/components/Panel/DistrictPanel";
+import StatePanel from "@/components/Panel/StatePanel";
 import HoverTooltip from "@/components/Map/HoverTooltip";
 import Legend from "@/components/Map/Legend";
 import BottomSheet from "@/components/UI/BottomSheet";
