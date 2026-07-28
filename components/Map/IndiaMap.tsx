@@ -196,11 +196,11 @@ export default function IndiaMap({
             ["linear"],
             ["zoom"],
             3,
-            ["*", ["get", "size"], 3],
+            ["+", 2.2, ["*", ["get", "size"], 4.5]],
             6,
-            ["*", ["get", "size"], 5.5],
+            ["+", 4, ["*", ["get", "size"], 8]],
             9,
-            ["*", ["get", "size"], 9.5],
+            ["+", 7, ["*", ["get", "size"], 14]],
           ],
           "circle-color": [
             "interpolate",
@@ -233,11 +233,11 @@ export default function IndiaMap({
             ["linear"],
             ["zoom"],
             3,
-            ["*", ["get", "size"], 0.035],
+            ["+", 0.04, ["*", ["get", "size"], 0.09]],
             6,
-            ["*", ["get", "size"], 0.065],
+            ["+", 0.07, ["*", ["get", "size"], 0.16]],
             9,
-            ["*", ["get", "size"], 0.11],
+            ["+", 0.12, ["*", ["get", "size"], 0.28]],
           ],
         },
         paint: {
@@ -360,4 +360,4 @@ function setFeatureStateByName(
 // state name (must match promoteId config below).
 function hashId(name: string): string {
   return name;
-}
+                                                }
