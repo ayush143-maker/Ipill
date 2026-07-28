@@ -1,22 +1,30 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import type { IndicatorMeta, MetaByIndicator, StatesCollection } from "./types";
+import type {
+  DistrictsCollection,
+  IndicatorMeta,
+  MetaByIndicator,
+  StateLeaderboardEntry,
+} from "./types";
 
 interface AtlasCore {
-  states: StatesCollection | null;
+  districts: DistrictsCollection | null;
   meta: MetaByIndicator | null;
   indicators: IndicatorMeta[] | null;
+  leaderboard: StateLeaderboardEntry[] | null;
   loading: boolean;
   error: string | null;
 }
 
-// Loads the always-needed core data (boundaries + national stats + the
-// indicator catalogue) once on mount.
+// Loads the always-needed core data once on mount: district boundaries +
+// values, national stats, the indicator catalogue, and the state
+// leaderboard (average across that state's matched districts).
 export function useAtlasCore(): AtlasCore {
-  const [states, setStates] = useState<StatesCollection | null>(null);
+  const [districts, setDistricts] = useState<DistrictsCollection | null>(null);
   const [meta, setMeta] = useState<MetaByIndicator | null>(null);
   const [indicators, setIndicators] = useState<IndicatorMeta[] | null>(null);
+  const [leaderboard, setLeaderboard] = useState<StateLeaderboardEntry[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -24,23 +32,26 @@ export function useAtlasCore(): AtlasCore {
     let cancelled = false;
     (async () => {
       try {
-        const [statesRes, metaRes, indicatorsRes] = await Promise.all([
-          fetch("/data/states.geojson"),
+        const [districtsRes, metaRes, indicatorsRes, leaderboardRes] = await Promise.all([
+          fetch("/data/districts.geojson"),
           fetch("/data/meta.json"),
           fetch("/data/indicators.json"),
+          fetch("/data/state_leaderboard.json"),
         ]);
-        if (!statesRes.ok || !metaRes.ok || !indicatorsRes.ok) {
+        if (!districtsRes.ok || !metaRes.ok || !indicatorsRes.ok || !leaderboardRes.ok) {
           throw new Error("Failed to load core atlas data");
         }
-        const [statesJson, metaJson, indicatorsJson] = await Promise.all([
-          statesRes.json(),
+        const [districtsJson, metaJson, indicatorsJson, leaderboardJson] = await Promise.all([
+          districtsRes.json(),
           metaRes.json(),
           indicatorsRes.json(),
+          leaderboardRes.json(),
         ]);
         if (cancelled) return;
-        setStates(statesJson);
+        setDistricts(districtsJson);
         setMeta(metaJson);
         setIndicators(indicatorsJson);
+        setLeaderboard(leaderboardJson);
       } catch (e) {
         if (!cancelled) setError(e instanceof Error ? e.message : "Unknown error");
       } finally {
@@ -52,7 +63,7 @@ export function useAtlasCore(): AtlasCore {
     };
   }, []);
 
-  return { states, meta, indicators, loading, error };
+  return { districts, meta, indicators, leaderboard, loading, error };
 }
 
 // Lazily fetches and caches (in-memory, per session) the dot GeoJSON for a

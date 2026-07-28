@@ -8,38 +8,48 @@ export interface IndicatorMeta {
   label: string;
 }
 
-export interface StateProperties {
+export interface DistrictProperties {
+  uid: string;
   state: string;
-  state_code: string;
-  nfhs_name: string;
-  [indicatorField: string]: string | number | undefined; // "<key>_total" etc.
+  district: string;
+  pill_total: number;
+  pill_nfhs4: number | null;
+  bbox: [number, number, number, number];
+  [indicatorField: string]: string | number | number[] | null | undefined;
 }
 
-export interface StateFeature {
+export interface DistrictFeature {
   type: "Feature";
-  properties: StateProperties;
+  properties: DistrictProperties;
   geometry: GeoJSON.Geometry;
 }
 
-export interface StatesCollection {
+export interface DistrictsCollection {
   type: "FeatureCollection";
-  features: StateFeature[];
+  features: DistrictFeature[];
 }
 
 export interface IndicatorNationalStats {
   label: string;
   national_average: number;
-  highest: { state: string; value: number };
-  lowest: { state: string; value: number };
+  highest: { district: string; state: string; value: number };
+  lowest: { district: string; state: string; value: number };
   count: number;
-  ranks: Record<string, number>;
+  ranks: Record<string, number>; // key: "state|district"
 }
 
 export type MetaByIndicator = Record<string, IndicatorNationalStats>;
 
 export interface DotProperties {
   s: string; // state name
+  d: string; // district name
   v: number; // indicator value at time of dot generation
+}
+
+export interface StateLeaderboardEntry {
+  state: string;
+  avg: number;
+  district_count: number;
 }
 
 export type Region =
@@ -50,3 +60,4 @@ export type Region =
   | "Central"
   | "Northeast"
   | "Union Territory";
+
