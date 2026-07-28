@@ -1,17 +1,10 @@
 import type { Metadata, Viewport } from "next";
-import { Inter } from "next/font/google";
 import "./globals.css";
-
-const inter = Inter({
-  subsets: ["latin"],
-  variable: "--font-inter",
-  display: "swap",
-});
 
 export const metadata: Metadata = {
   title: "India Family Planning Atlas | NFHS-5",
   description:
-    "Interactive, district-level visualization of oral contraceptive pill use across India, sourced from NFHS-5 (2019–21).",
+    "Interactive, state-level visualization of contraceptive method use across India, sourced from NFHS-5 (2019–21).",
 };
 
 export const viewport: Viewport = {
@@ -23,7 +16,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={inter.variable}>
+    <html lang="en">
       <body className="bg-bg font-sans text-text-primary antialiased">{children}</body>
     </html>
   );

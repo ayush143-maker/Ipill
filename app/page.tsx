@@ -10,7 +10,6 @@ import type { Region, StateFeature } from "@/lib/types";
 import SearchBar from "@/components/Search/SearchBar";
 import FilterPanel from "@/components/Filters/FilterPanel";
 import StatsCards from "@/components/Stats/StatsCards";
-import Leaderboard from "@/components/Stats/Leaderboard";
 import StatePanel from "@/components/Panel/StatePanel";
 import HoverTooltip from "@/components/Map/HoverTooltip";
 import Legend from "@/components/Map/Legend";
@@ -28,7 +27,7 @@ const IndiaMap = dynamic(() => import("@/components/Map/IndiaMap"), {
 const DEFAULT_INDICATOR = "pill";
 
 export default function Home() {
-  const { states, meta, indicators, leaderboard, loading, error } = useAtlasCore();
+  const { states, meta, indicators, loading, error } = useAtlasCore();
   const [indicatorKey, setIndicatorKey] = useState(DEFAULT_INDICATOR);
   const { data: dots } = useIndicatorDots(indicatorKey);
 
@@ -48,10 +47,13 @@ export default function Home() {
 
   const bounds = useMemo<[number, number]>(() => {
     if (!states) return [0, 100];
-    const vals = states.features.map((f) => f.properties.pill_total);
+    const vals = states.features
+      .map((f) => f.properties[`${indicatorKey}_total`] as number | undefined)
+      .filter((v): v is number => v != null);
     return [0, Math.ceil(Math.max(...vals))];
-  }, [states]);
+  }, [states, indicatorKey]);
 
+  // Reset range to full bounds whenever indicator changes
   useEffect(() => {
     setRange(bounds);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -67,19 +69,20 @@ export default function Home() {
     for (const f of states.features) {
       const name = f.properties.state;
       const region = STATE_REGION[name];
-      const value = f.properties.pill_total;
+      const value = f.properties[`${indicatorKey}_total`] as number | undefined;
       const regionOk = !regionFiltering || (region && activeRegions.has(region));
-      const rangeOk = value >= range[0] && value <= range[1];
+      const rangeOk = value != null && value >= range[0] && value <= range[1];
       if (regionOk && rangeOk) set.add(name);
     }
     return set;
-  }, [states, activeRegions, range, bounds]);
+  }, [states, activeRegions, range, bounds, indicatorKey]);
 
   function selectState(name: string | null) {
     setSelectedState(name);
     if (name && states) {
       const f = states.features.find((ft) => ft.properties.state === name);
-      if (f?.properties.bbox) setFlyToBbox([...f.properties.bbox]);
+      const bbox = f?.properties.bbox as [number, number, number, number] | undefined;
+      if (bbox) setFlyToBbox([...bbox]);
     }
   }
 
@@ -120,6 +123,7 @@ export default function Home() {
         <IndiaMap
           states={states}
           dots={dots}
+          indicatorKey={indicatorKey}
           selectedState={selectedState}
           visibleStates={visibleStates}
           onSelectState={selectState}
@@ -129,7 +133,13 @@ export default function Home() {
       )}
 
       {!isMobile && hoveredFeature && (
-        <HoverTooltip feature={hoveredFeature} x={hover.x} y={hover.y} />
+        <HoverTooltip
+          feature={hoveredFeature}
+          x={hover.x}
+          y={hover.y}
+          indicatorKey={indicatorKey}
+          indicatorLabel={indicators?.find((i) => i.key === indicatorKey)?.label ?? ""}
+        />
       )}
 
       {/* Top overlay: title + search + filter toggle */}
@@ -183,9 +193,8 @@ export default function Home() {
         )}
       </div>
 
-      <div className="pointer-events-auto absolute bottom-3 left-3 z-10 hidden flex-col gap-2 sm:flex">
+      <div className="pointer-events-auto absolute bottom-3 left-3 z-10 hidden sm:block">
         <Legend />
-        {leaderboard && <Leaderboard entries={leaderboard} />}
       </div>
 
       {loading && (
@@ -195,17 +204,29 @@ export default function Home() {
       )}
 
       {/* Desktop side panel */}
-      {!isMobile && selectedFeature && meta && (
+      {!isMobile && selectedFeature && meta && indicators && (
         <div className="absolute right-0 top-0 z-20 h-full w-[380px] border-l border-border bg-panel/95 shadow-glow backdrop-blur-md">
-          <StatePanel feature={selectedFeature} meta={meta[indicatorKey]} onClose={() => selectState(null)} />
+          <StatePanel
+            feature={selectedFeature}
+            indicatorKey={indicatorKey}
+            indicators={indicators}
+            meta={meta[indicatorKey]}
+            onClose={() => selectState(null)}
+          />
         </div>
       )}
 
       {/* Mobile bottom sheet */}
       {isMobile && (
         <BottomSheet open={!!selectedFeature} onClose={() => selectState(null)}>
-          {selectedFeature && meta && (
-            <StatePanel feature={selectedFeature} meta={meta[indicatorKey]} onClose={() => selectState(null)} />
+          {selectedFeature && meta && indicators && (
+            <StatePanel
+              feature={selectedFeature}
+              indicatorKey={indicatorKey}
+              indicators={indicators}
+              meta={meta[indicatorKey]}
+              onClose={() => selectState(null)}
+            />
           )}
         </BottomSheet>
       )}
