@@ -1,5 +1,7 @@
-// Shared types. Indicator is kept generic so a future indicator (anaemia,
-// hypertension...) can be added by extending the data pipeline only.
+// Shared types. Keeping these generic (not hardcoded to "pill") is what
+// lets a future indicator (anaemia, hypertension, diabetes...) be added
+// just by adding an entry to public/data/indicators.json + a dots file -
+// no component changes required.
 
 export interface IndicatorMeta {
   key: string;
@@ -8,16 +10,9 @@ export interface IndicatorMeta {
 
 export interface StateProperties {
   state: string;
-  pill_total: number;
-  pill_urban: number;
-  pill_rural: number;
-  pill_nfhs4: number | null;
-  bbox: [number, number, number, number];
-  highest_district?: string;
-  highest_district_value?: number;
-  lowest_district?: string;
-  lowest_district_value?: number;
-  district_count_in_state?: number;
+  state_code: string;
+  nfhs_name: string;
+  [indicatorField: string]: string | number | undefined; // "<key>_total" etc.
 }
 
 export interface StateFeature {
@@ -37,20 +32,14 @@ export interface IndicatorNationalStats {
   highest: { state: string; value: number };
   lowest: { state: string; value: number };
   count: number;
-  ranks: Record<string, number>; // key: state name
+  ranks: Record<string, number>;
 }
 
 export type MetaByIndicator = Record<string, IndicatorNationalStats>;
 
 export interface DotProperties {
-  s: string; // parent state name
-  v: number; // source district's real value (density driver)
-}
-
-export interface StateLeaderboardEntry {
-  state: string;
-  avg: number; // real state-level Pill % (not an approximation)
-  district_count: number;
+  s: string; // state name
+  v: number; // indicator value at time of dot generation
 }
 
 export type Region =
