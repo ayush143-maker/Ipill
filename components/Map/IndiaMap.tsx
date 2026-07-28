@@ -89,6 +89,12 @@ export default function IndiaMap({
   const loadedRef = useRef(false);
   const hoveredRef = useRef<string | null>(null);
 
+  // Synthetic density clusters — stylistic only, not real district data.
+  // Regenerated whenever the indicator changes (values differ per indicator).
+  // Declared before the mount effect below so its "load" callback can seed
+  // the dots source with real data immediately instead of an empty placeholder.
+  const dots = useMemo(() => buildClusterDots(states, indicatorKey), [states, indicatorKey]);
+
   // Init map once
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
@@ -120,7 +126,7 @@ export default function IndiaMap({
       });
       map.addSource("dots", {
         type: "geojson",
-        data: { type: "FeatureCollection", features: [] },
+        data: dots as unknown as GeoJSON.FeatureCollection,
       });
 
       // Base state fill (very subtle, mostly for hit-testing + gentle tone)
@@ -177,8 +183,9 @@ export default function IndiaMap({
         filter: ["==", "state", "__none__"],
       });
 
-      // Soft outer bloom (blurred circle) — density/intensity reads through
-      // opacity + radius scaling on each point's normalized state value ("v").
+      // Soft outer bloom (blurred circle) — size/opacity now come straight
+      // from each point's own "size"/"glow" (already baked in per role +
+      // state intensity + organic jitter during generation).
       map.addLayer({
         id: "dots-bloom",
         type: "circle",
@@ -189,16 +196,16 @@ export default function IndiaMap({
             ["linear"],
             ["zoom"],
             3,
-            ["*", ["get", "size"], ["interpolate", ["linear"], ["get", "v"], 0, 4, 1, 9]],
+            ["*", ["get", "size"], 3],
             6,
-            ["*", ["get", "size"], ["interpolate", ["linear"], ["get", "v"], 0, 7, 1, 16]],
+            ["*", ["get", "size"], 5.5],
             9,
-            ["*", ["get", "size"], ["interpolate", ["linear"], ["get", "v"], 0, 12, 1, 27]],
+            ["*", ["get", "size"], 9.5],
           ],
           "circle-color": [
             "interpolate",
             ["linear"],
-            ["get", "v"],
+            ["get", "glow"],
             0,
             "#FFD0F7",
             0.5,
@@ -207,12 +214,12 @@ export default function IndiaMap({
             "#FF43D1",
           ],
           "circle-blur": 1.3,
-          "circle-opacity": ["interpolate", ["linear"], ["get", "v"], 0, 0.1, 1, 0.42],
+          "circle-opacity": ["interpolate", ["linear"], ["get", "glow"], 0, 0.08, 1, 0.4],
         },
       });
 
       // Glossy gel-sphere marker (sprite): white upper-left hotspot, hot-pink
-      // body, lavender bloom edge. Size + opacity scale with intensity.
+      // body, lavender bloom edge. Size + opacity read from the point itself.
       map.addLayer({
         id: "dots-gel",
         type: "symbol",
@@ -226,15 +233,15 @@ export default function IndiaMap({
             ["linear"],
             ["zoom"],
             3,
-            ["*", ["get", "size"], ["interpolate", ["linear"], ["get", "v"], 0, 0.05, 1, 0.11]],
+            ["*", ["get", "size"], 0.035],
             6,
-            ["*", ["get", "size"], ["interpolate", ["linear"], ["get", "v"], 0, 0.09, 1, 0.19]],
+            ["*", ["get", "size"], 0.065],
             9,
-            ["*", ["get", "size"], ["interpolate", ["linear"], ["get", "v"], 0, 0.15, 1, 0.3]],
+            ["*", ["get", "size"], 0.11],
           ],
         },
         paint: {
-          "icon-opacity": ["interpolate", ["linear"], ["get", "v"], 0, 0.6, 1, 0.98],
+          "icon-opacity": ["interpolate", ["linear"], ["get", "glow"], 0, 0.5, 1, 0.98],
         },
       });
 
@@ -282,10 +289,6 @@ export default function IndiaMap({
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  // Synthetic density clusters — stylistic only, not real district data.
-  // Regenerated whenever the indicator changes (values differ per indicator).
-  const dots = useMemo(() => buildClusterDots(states, indicatorKey), [states, indicatorKey]);
 
   // Update dots source when indicator/data changes
   useEffect(() => {
