@@ -2,7 +2,7 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "India Family Planning Atlas | NFHS-5",
+  title: "Oral Contraceptive Atlas",
   description:
     "Interactive, state-level visualization of contraceptive method use across India, sourced from NFHS-5 (2019–21).",
 };
