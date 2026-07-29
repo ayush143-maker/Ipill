@@ -144,10 +144,7 @@ export default function StatePanel({
         )}
 
         <p className="text-[11px] leading-relaxed text-text-muted">
-          Source: National Family Health Survey-5 (2019–21), Ministry of Health &amp; Family
-          Welfare, Government of India. Dot positions on the map are randomized within the
-          state boundary for visual texture; dot count is proportional to this indicator's
-          real value.
+          Source: National Family Health Survey-5 (NFHS-5), Ministry of Health & Family Welfare, Government of India. Dot density represents the relative prevalence of this indicator across states and is intended for visual comparison.
         </p>
       </div>
     </div>
