@@ -158,7 +158,7 @@ export default function IndiaMap({
             "#ff2fb0",
             ["boolean", ["feature-state", "hover"], false],
             "#a855f7",
-            "#2a2a3a",
+            "#0B0B12",
           ],
           "line-width": [
             "case",
@@ -166,7 +166,15 @@ export default function IndiaMap({
             2,
             ["boolean", ["feature-state", "hover"], false],
             1.4,
-            0.6,
+            1,
+          ],
+          "line-opacity": [
+            "case",
+            ["boolean", ["feature-state", "selected"], false],
+            1,
+            ["boolean", ["feature-state", "hover"], false],
+            1,
+            0.85,
           ],
         },
       });
@@ -213,8 +221,8 @@ export default function IndiaMap({
             1,
             "#FF43D1",
           ],
-          "circle-blur": 1.3,
-          "circle-opacity": ["interpolate", ["linear"], ["get", "glow"], 0, 0.22, 1, 0.55],
+          "circle-blur": 0.85,
+          "circle-opacity": ["interpolate", ["linear"], ["get", "glow"], 0, 0.2, 1, 0.42],
         },
       });
 
@@ -246,6 +254,10 @@ export default function IndiaMap({
       });
 
       loadedRef.current = true;
+
+      // Boundary lines must render ABOVE the dots layers, or dense clusters
+      // near a border visually fuse neighboring states into one blob.
+      map.moveLayer("states-line");
 
       // Interactions
       map.on("click", "states-fill", (e) => {
@@ -360,5 +372,4 @@ function setFeatureStateByName(
 // state name (must match promoteId config below).
 function hashId(name: string): string {
   return name;
-                                           }
-  
+        }
