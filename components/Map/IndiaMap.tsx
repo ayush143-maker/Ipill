@@ -158,7 +158,7 @@ export default function IndiaMap({
             "#ff2fb0",
             ["boolean", ["feature-state", "hover"], false],
             "#a855f7",
-            "#15151f",
+            "#4a4a5c",
           ],
           "line-width": [
             "case",
@@ -166,7 +166,7 @@ export default function IndiaMap({
             2,
             ["boolean", ["feature-state", "hover"], false],
             1.4,
-            0.6,
+            0.8,
           ],
           "line-opacity": [
             "case",
@@ -174,7 +174,7 @@ export default function IndiaMap({
             1,
             ["boolean", ["feature-state", "hover"], false],
             1,
-            0.5,
+            0.9,
           ],
         },
       });
@@ -204,11 +204,11 @@ export default function IndiaMap({
             ["linear"],
             ["zoom"],
             3,
-            ["+", 3.2, ["*", ["get", "size"], 5.5]],
+            ["+", 2.6, ["*", ["get", "size"], 4.2]],
             6,
-            ["+", 5.5, ["*", ["get", "size"], 9.5]],
+            ["+", 4.5, ["*", ["get", "size"], 7.5]],
             9,
-            ["+", 9, ["*", ["get", "size"], 16]],
+            ["+", 7.5, ["*", ["get", "size"], 13]],
           ],
           "circle-color": [
             "interpolate",
@@ -241,11 +241,11 @@ export default function IndiaMap({
             ["linear"],
             ["zoom"],
             3,
-            ["+", 0.055, ["*", ["get", "size"], 0.11]],
+            ["+", 0.045, ["*", ["get", "size"], 0.085]],
             6,
-            ["+", 0.09, ["*", ["get", "size"], 0.19]],
+            ["+", 0.075, ["*", ["get", "size"], 0.15]],
             9,
-            ["+", 0.15, ["*", ["get", "size"], 0.32]],
+            ["+", 0.13, ["*", ["get", "size"], 0.26]],
           ],
         },
         paint: {
@@ -372,5 +372,5 @@ function setFeatureStateByName(
 // state name (must match promoteId config below).
 function hashId(name: string): string {
   return name;
-          }
-      
+        }
+                     
