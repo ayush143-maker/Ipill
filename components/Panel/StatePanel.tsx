@@ -124,7 +124,7 @@ export default function StatePanel({
         {trendData.length > 0 && (
           <div>
             <div className="mb-2 text-[11px] uppercase tracking-wide text-text-muted">
-              Trend: NFHS-4 → NFHS-5
+              Trend: NFHS-5 → NFHS-6
             </div>
             <div className="h-28">
               <ResponsiveContainer width="100%" height="100%">
