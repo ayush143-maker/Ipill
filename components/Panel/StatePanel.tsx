@@ -33,8 +33,8 @@ export default function StatePanel({
   const trendData =
     value != null && nfhs4 != null
       ? [
-          { round: "NFHS-5\n(2019–21)", value: nfhs4 },
-          { round: "NFHS-6\n(2023–24)", value },
+          { round: "Then", value: nfhs4 },
+          { round: "Now", value },
         ]
       : [];
 
@@ -124,7 +124,7 @@ export default function StatePanel({
         {trendData.length > 0 && (
           <div>
             <div className="mb-2 text-[11px] uppercase tracking-wide text-text-muted">
-              Trend Forecast !
+              Trend : NFHS-5 vs NFHS 6
             </div>
             <div className="h-28">
               <ResponsiveContainer width="100%" height="100%">
@@ -144,7 +144,7 @@ export default function StatePanel({
         )}
 
         <p className="text-[11px] leading-relaxed text-text-muted">
-           Source: NFHS and other public health datasets. This visualization represents the estimated distribution of contraceptive use across India, including i-Pill, Unwanted-72, and Mala-D For educational and research purposes only!
+           Source: Data presented in this atlas is derived from the National Family Health Survey (NFHS-5 & NFHS-6), conducted by the Ministry of Health & Family Welfare, Government of India. The visualization reflects trends in the reported use of emergency contraceptive pills (such as i-Pill, Unwanted-72 and similar brands) and oral contraceptive pills including Mala-D. Every glowing dot represents anonymized, aggregated survey data—not individuals. Some decisions end with a deep breath. Others end up as government data. Every dot has a story that never made it to a birth certificate!
        </p>
       </div>
     </div>
