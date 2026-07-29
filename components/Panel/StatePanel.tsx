@@ -144,8 +144,8 @@ export default function StatePanel({
         )}
 
         <p className="text-[11px] leading-relaxed text-text-muted">
-          Source: National Family Health Survey (NFHS-5/6), Ministry of Health & Family Welfare, Government of India. Dot density represents the relative prevalence of this indicator across states and is intended for visual comparison.
-        </p>
+           Source: NFHS and other public health datasets. This visualization represents the estimated distribution of contraceptive use across India, including i-Pill, Unwanted-72, and Mala-D For educational and research purposes only!
+       </p>
       </div>
     </div>
   );
