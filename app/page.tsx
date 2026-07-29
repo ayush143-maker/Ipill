@@ -14,6 +14,7 @@ import StatePanel from "@/components/Panel/StatePanel";
 import HoverTooltip from "@/components/Map/HoverTooltip";
 import Legend from "@/components/Map/Legend";
 import BottomSheet from "@/components/UI/BottomSheet";
+import LoadingIntro from "@/components/UI/LoadingIntro";
 
 const IndiaMap = dynamic(() => import("@/components/Map/IndiaMap"), {
   ssr: false,
@@ -39,6 +40,7 @@ export default function Home() {
   });
 
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const [introDone, setIntroDone] = useState(false);
   const [activeRegions, setActiveRegions] = useState<Set<Region>>(new Set());
   const [range, setRange] = useState<[number, number]>([0, 100]);
 
@@ -146,7 +148,7 @@ export default function Home() {
           <div className="hidden shrink-0 items-center gap-2 rounded-xl border border-border bg-panel/80 px-3 py-2 backdrop-blur-sm sm:flex">
             <MapPin size={16} className="text-glowPink" />
             <span className="text-sm font-semibold text-text-primary">
-              Oral Contraceptive Atlas
+              India Family Planning Atlas
             </span>
           </div>
           <div className="flex-1">
@@ -195,10 +197,8 @@ export default function Home() {
         <Legend />
       </div>
 
-      {loading && (
-        <div className="absolute inset-0 z-20 flex items-center justify-center bg-bg/70 backdrop-blur-sm">
-          <div className="text-sm text-text-secondary">Loading NFHS-6 Atlas Data…</div>
-        </div>
+      {!introDone && (
+        <LoadingIntro dataReady={!loading} onDone={() => setIntroDone(true)} />
       )}
 
       {/* Desktop side panel */}
