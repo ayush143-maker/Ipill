@@ -82,7 +82,7 @@ export default function StatePanel({
 
         <div className="grid grid-cols-2 gap-2">
           <div className="rounded-lg border border-border bg-black/20 px-3 py-2">
-            <div className="text-[10px] uppercase text-text-muted">National Rank</div>
+            <div className="text-[10px] uppercase text-text-muted">Leaderboard </div>
             <div className="text-lg font-semibold text-text-primary">
               {rank ? `#${rank} of ${meta.count}` : "—"}
             </div>
@@ -124,7 +124,7 @@ export default function StatePanel({
         {trendData.length > 0 && (
           <div>
             <div className="mb-2 text-[11px] uppercase tracking-wide text-text-muted">
-              Trend: NFHS-5 → NFHS-6
+              Trend Forecast !
             </div>
             <div className="h-28">
               <ResponsiveContainer width="100%" height="100%">
