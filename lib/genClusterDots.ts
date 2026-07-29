@@ -51,8 +51,8 @@ function randomPointNear(
   stdLon: number,
   stdLat: number,
   feature: GeoJSON.Feature,
-  maxAttempts = 6
-): [number, number] | null {
+  maxAttempts = 10
+): [number, number] {
   let radiusScale = 1;
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
     const [dx, dy] = gaussianOffset(stdLon * radiusScale, stdLat * radiusScale);
@@ -60,7 +60,25 @@ function randomPointNear(
     if (turf.booleanPointInPolygon(candidate, feature as any)) return candidate;
     radiusScale *= 0.55;
   }
-  return null;
+  // Every attempt landed outside the polygon (tiny/sliver state). Rather than
+  // returning `center` verbatim — which stacks many failed points on the
+  // exact same coordinate and renders as one fused mega-circle — nudge by a
+  // small random offset so failed points still spread out visually.
+  const angle = Math.random() * Math.PI * 2;
+  const nudge = Math.min(stdLon, stdLat) * 0.25;
+  return [center[0] + Math.cos(angle) * nudge, center[1] + Math.sin(angle) * nudge];
+}
+
+// Small/compact states (Sikkim, Goa, UTs) shouldn't receive the same raw
+// point count as a state 20x their size — that's what crams hundreds of
+// points into a sliver of land and forces constant placement failures,
+// which is what produced the fused "lollipop" blob. Scale count by area.
+function areaScaleFactor(feature: GeoJSON.Feature): number {
+  const areaM2 = turf.area(feature as any);
+  const areaKm2 = areaM2 / 1_000_000;
+  const REFERENCE_KM2 = 60_000; // roughly a mid-sized Indian state
+  const raw = Math.sqrt(areaKm2 / REFERENCE_KM2);
+  return Math.min(1.15, Math.max(0.3, raw));
 }
 
 // Semi-random "jittered grid": lays a coarse grid over the state's bbox,
@@ -153,8 +171,9 @@ export function buildClusterDots(
     if (rawValue == null) continue;
 
     const v = clamp01((rawValue - min) / range);
+    const areaScale = areaScaleFactor(feature as GeoJSON.Feature);
 
-    const total = Math.round(lerp(MIN_TOTAL, MAX_TOTAL, v));
+    const total = Math.round(lerp(MIN_TOTAL, MAX_TOTAL, v) * areaScale);
     const scatterTarget = Math.round(total * SCATTER_FRACTION);
     const clusterTarget = total - scatterTarget;
 
@@ -184,10 +203,10 @@ export function buildClusterDots(
     const lonExtent = bbox[2] - bbox[0];
     const latExtent = bbox[3] - bbox[1];
 
-    const seedSpreadLon = lonExtent * lerp(0.22, 0.05, v);
-    const seedSpreadLat = latExtent * lerp(0.22, 0.05, v);
-    const dotSpreadLon = lonExtent * lerp(0.09, 0.02, v);
-    const dotSpreadLat = latExtent * lerp(0.09, 0.02, v);
+    const seedSpreadLon = lonExtent * lerp(0.22, 0.06, v);
+    const seedSpreadLat = latExtent * lerp(0.22, 0.06, v);
+    const dotSpreadLon = lonExtent * lerp(0.09, 0.035, v);
+    const dotSpreadLat = latExtent * lerp(0.09, 0.035, v);
 
     const numSeeds = Math.round(lerp(MIN_CLUSTER_SEEDS, MAX_CLUSTER_SEEDS, v));
     const pointsPerSeed = Math.max(1, Math.round(clusterTarget / numSeeds));
@@ -195,13 +214,12 @@ export function buildClusterDots(
     const seeds: [number, number][] = [anchor];
     for (let i = 1; i < numSeeds; i++) {
       const seed = randomPointNear(anchor, seedSpreadLon, seedSpreadLat, feature as GeoJSON.Feature);
-      seeds.push(seed ?? anchor);
+      seeds.push(seed);
     }
 
     for (const seed of seeds) {
       for (let i = 0; i < pointsPerSeed; i++) {
-        const pt = randomPointNear(seed, dotSpreadLon, dotSpreadLat, feature as GeoJSON.Feature);
-        const coords = pt ?? seed;
+        const coords = randomPointNear(seed, dotSpreadLon, dotSpreadLat, feature as GeoJSON.Feature);
         const sizeJitter = 0.85 + Math.random() * 0.6;
         const glowJitter = 0.55 + Math.random() * 0.35;
         features.push({
@@ -221,4 +239,5 @@ export function buildClusterDots(
   }
 
   return { type: "FeatureCollection", features };
-}
+        }
+      
