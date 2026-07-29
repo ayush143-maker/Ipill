@@ -158,7 +158,7 @@ export default function IndiaMap({
             "#ff2fb0",
             ["boolean", ["feature-state", "hover"], false],
             "#a855f7",
-            "#0B0B12",
+            "#15151f",
           ],
           "line-width": [
             "case",
@@ -166,7 +166,7 @@ export default function IndiaMap({
             2,
             ["boolean", ["feature-state", "hover"], false],
             1.4,
-            1,
+            0.6,
           ],
           "line-opacity": [
             "case",
@@ -174,7 +174,7 @@ export default function IndiaMap({
             1,
             ["boolean", ["feature-state", "hover"], false],
             1,
-            0.85,
+            0.5,
           ],
         },
       });
@@ -221,8 +221,8 @@ export default function IndiaMap({
             1,
             "#FF43D1",
           ],
-          "circle-blur": 0.85,
-          "circle-opacity": ["interpolate", ["linear"], ["get", "glow"], 0, 0.2, 1, 0.42],
+          "circle-blur": 1.15,
+          "circle-opacity": ["interpolate", ["linear"], ["get", "glow"], 0, 0.22, 1, 0.5],
         },
       });
 
@@ -249,7 +249,7 @@ export default function IndiaMap({
           ],
         },
         paint: {
-          "icon-opacity": ["interpolate", ["linear"], ["get", "glow"], 0, 0.5, 1, 0.98],
+          "icon-opacity": ["interpolate", ["linear"], ["get", "glow"], 0, 0.28, 1, 0.72],
         },
       });
 
@@ -372,4 +372,5 @@ function setFeatureStateByName(
 // state name (must match promoteId config below).
 function hashId(name: string): string {
   return name;
-        }
+          }
+      
