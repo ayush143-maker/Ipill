@@ -2,9 +2,9 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Oral Contraceptive Atlas",
+  title: "The Oops Atlas",
   description:
-    "Interactive, state-level visualization of contraceptive method use across India, sourced from NFHS-5 (2019–21).",
+    "The map of choices nobody plans for <3",
 };
 
 export const viewport: Viewport = {
