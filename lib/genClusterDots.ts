@@ -21,8 +21,8 @@ export interface ClusterPointProps {
 }
 
 // Total particles per state scale ~5x over the old single-density version.
-const MIN_TOTAL = 60;
-const MAX_TOTAL = 450;
+const MIN_TOTAL = 45;
+const MAX_TOTAL = 300;
 const SCATTER_FRACTION = 0.65;
 
 const MIN_CLUSTER_SEEDS = 2;
@@ -203,10 +203,10 @@ export function buildClusterDots(
     const lonExtent = bbox[2] - bbox[0];
     const latExtent = bbox[3] - bbox[1];
 
-    const seedSpreadLon = lonExtent * lerp(0.22, 0.06, v);
-    const seedSpreadLat = latExtent * lerp(0.22, 0.06, v);
-    const dotSpreadLon = lonExtent * lerp(0.09, 0.035, v);
-    const dotSpreadLat = latExtent * lerp(0.09, 0.035, v);
+    const seedSpreadLon = lonExtent * lerp(0.24, 0.08, v);
+    const seedSpreadLat = latExtent * lerp(0.24, 0.08, v);
+    const dotSpreadLon = lonExtent * lerp(0.11, 0.055, v);
+    const dotSpreadLat = latExtent * lerp(0.11, 0.055, v);
 
     const numSeeds = Math.round(lerp(MIN_CLUSTER_SEEDS, MAX_CLUSTER_SEEDS, v));
     const pointsPerSeed = Math.max(1, Math.round(clusterTarget / numSeeds));
@@ -239,5 +239,5 @@ export function buildClusterDots(
   }
 
   return { type: "FeatureCollection", features };
-        }
-      
+      }
+            
