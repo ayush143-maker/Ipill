@@ -33,8 +33,8 @@ export default function StatePanel({
   const trendData =
     value != null && nfhs4 != null
       ? [
-          { round: "NFHS-4\n(2015–16)", value: nfhs4 },
-          { round: "NFHS-5\n(2019–21)", value },
+          { round: "NFHS-5\n(2019–21)", value: nfhs4 },
+          { round: "NFHS-6\n(2023–24)", value },
         ]
       : [];
 
@@ -144,7 +144,7 @@ export default function StatePanel({
         )}
 
         <p className="text-[11px] leading-relaxed text-text-muted">
-          Source: National Family Health Survey-5 (NFHS-5), Ministry of Health & Family Welfare, Government of India. Dot density represents the relative prevalence of this indicator across states and is intended for visual comparison.
+          Source: National Family Health Survey (NFHS-5/6), Ministry of Health & Family Welfare, Government of India. Dot density represents the relative prevalence of this indicator across states and is intended for visual comparison.
         </p>
       </div>
     </div>
