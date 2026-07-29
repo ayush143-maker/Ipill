@@ -197,7 +197,7 @@ export default function Home() {
 
       {loading && (
         <div className="absolute inset-0 z-20 flex items-center justify-center bg-bg/70 backdrop-blur-sm">
-          <div className="text-sm text-text-secondary">Loading NFHS-5 atlas data…</div>
+          <div className="text-sm text-text-secondary">Loading NFHS-6 Atlas Data…</div>
         </div>
       )}
 
