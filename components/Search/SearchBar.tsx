@@ -37,7 +37,7 @@ export default function SearchBar({ features, onSelect }: SearchBarProps) {
           onChange={(e) => setQuery(e.target.value)}
           onFocus={() => setFocused(true)}
           onBlur={() => setTimeout(() => setFocused(false), 150)}
-          placeholder="Search state or union territory..."
+          placeholder="Where curiosity meets awkward statistics..."
           className="w-full bg-transparent text-sm text-text-primary placeholder:text-text-muted focus:outline-none"
         />
         {query && (
