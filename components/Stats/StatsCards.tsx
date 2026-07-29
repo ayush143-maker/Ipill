@@ -6,7 +6,7 @@ export default function StatsCards({ stats }: { stats: IndicatorNationalStats })
   const cards = [
     { label: "National Average", value: `${stats.national_average}%` },
     { label: "Most Prepared", value: `${stats.highest.value}%`, sub: stats.highest.state },
-    { label: "Calmest", value: `${stats.lowest.value}%`, sub: stats.lowest.state },
+    { label: "Shit yawr", value: `${stats.lowest.value}%`, sub: stats.lowest.state },
     { label: "States / UTs", value: String(stats.count) },
   ];
 
