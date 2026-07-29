@@ -146,7 +146,7 @@ export default function Home() {
           <div className="hidden shrink-0 items-center gap-2 rounded-xl border border-border bg-panel/80 px-3 py-2 backdrop-blur-sm sm:flex">
             <MapPin size={16} className="text-glowPink" />
             <span className="text-sm font-semibold text-text-primary">
-              India Family Planning Atlas
+              Oral Contraceptive Atlas
             </span>
           </div>
           <div className="flex-1">
